@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Siribhoovalaya Visualizer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Tiro+Kannada:ital@0;1&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Siribhoovalaya Visualizer</h1>
+            <p>Explore the ancient 27x27 Chakra grid and extract Bandhas.</p>
+        </header>
+
+        <main>
+            <div class="grid-container">
+                <canvas id="chakraCanvas" width="810" height="810"></canvas>
+                <div id="tooltip" class="tooltip"></div>
+            </div>
+
+            <div class="controls">
+                <h2>Controls</h2>
+                <div class="control-group">
+                    <label>Current Mode:</label>
+                    <select id="interactionMode">
+                        <option value="view">View/Inspect</option>
+                        <option value="draw">Draw Path</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Display:</label>
+                    <div class="toggle-group">
+                        <label><input type="radio" name="displayMode" value="number" checked> Numbers</label>
+                        <label><input type="radio" name="displayMode" value="akshara"> Aksharas</label>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <button id="undoBtn">Undo</button>
+                    <button id="clearPathBtn">Clear Path</button>
+                    <button id="extractTextBtn" class="primary">Extract Text</button>
+                </div>
+
+                <div class="output-area">
+                    <h3>Extracted Text:</h3>
+                    <div id="extractedText" class="text-box">...</div>
+                </div>
+
+                <div class="debug-info">
+                    <p>Selected Cells: <span id="cellCount">0</span></p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+
+</html>
