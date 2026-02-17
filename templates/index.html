@@ -7,6 +7,7 @@
     <title>Siribhoovalaya Visualizer</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Tiro+Kannada:ital@0;1&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi:ital@0;1&display=swap" rel="stylesheet">
 </head>
 
 <body>
@@ -26,7 +27,7 @@
                 <h2>Controls</h2>
 
                 <div class="control-group upload-section">
-                    <label>Load Excel Grid:</label>
+                    <label>Load 27 x 27 Chakra(Grid): </label>
                     <div class="input-group">
                         <input type="file" id="chakraFile" accept=".xls,.xlsx">
                         <button id="uploadBtn">Load</button>
@@ -59,7 +60,8 @@
                     <label>Display:</label>
                     <div class="toggle-group">
                         <label><input type="radio" name="displayMode" value="number" checked> Numbers</label>
-                        <label><input type="radio" name="displayMode" value="akshara"> Aksharas</label>
+                        <label><input type="radio" name="displayMode" value="ಅಕ್ಷರಗಳು"> ಅಕ್ಷರಗಳು</label>
+                        <label><input type="radio" name="displayMode" value="अक्षराणी"> अक्षराणी</label>
                     </div>
                 </div>
 

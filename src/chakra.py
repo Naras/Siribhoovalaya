@@ -51,9 +51,9 @@ class Chakra:
             print(f"Error loading Chakra data: {e}")
             self.grid = None
 
-    def get_akshara_at(self, row, col):
+    def get_akshara_at(self, row, col, script="kannada"):
         """
-        Returns the Akshara (Kannada character) at the given 0-indexed row, col.
+        Returns the Akshara (Kannada plus Devanagari character) at the given 0-indexed row, col.
         Row and Col should be 0-26.
         """
         if self.grid is None:
@@ -68,7 +68,7 @@ class Chakra:
         if 1 <= number <= 64:
              # AKSHARA_MAP is in Devanagari
              devanagari = AKSHARA_MAP[number]
-             return transliterate_text(devanagari, 'kannada')
+             return transliterate_text(devanagari, script), devanagari
         return "?"
 
     def get_number_at(self, row, col):

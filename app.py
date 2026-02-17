@@ -45,7 +45,8 @@ def traverse_path():
     data = request.json
     points = data.get('points')
     formula = data.get('formula')
-    # print(f"Request data: points {points} formula {formula}")
+    script = data.get('script')
+    # print(f"Request data: {data}")
     bandha = Bandha()
     
     generated_points = []
@@ -56,7 +57,7 @@ def traverse_path():
         bandha.set_path(points)
         generated_points = points
         
-    text = bandha.traverse(chakra)
+    text = bandha.traverse(chakra,script=script)
     
     return jsonify({
         'text': text,

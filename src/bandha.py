@@ -16,7 +16,7 @@ class Bandha:
     def add_point(self, row, col):
         self.path_points.append((row, col))
 
-    def traverse(self, chakra) -> str:
+    def traverse(self, chakra, script='kannada') -> str:
         """
         Traverses the given Chakra object following the path and returns the extracted text.
         """
@@ -24,9 +24,10 @@ class Bandha:
         for r, c in self.path_points:
             # Check bounds
             if 0 <= r < 27 and 0 <= c < 27:
-                akshara = chakra.get_akshara_at(r, c)
+                akshara = chakra.get_akshara_at(r, c, script)
                 if akshara:
-                    result_text += akshara
+                    if script == 'kannada': result_text += akshara[0]
+                    else: result_text += akshara[1]
             else:
                  # What to do on out of bounds? Ignore or mark?
                  # Ignoring for now.

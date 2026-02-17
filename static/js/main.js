@@ -118,16 +118,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Draw number/char
                 if (gridData[r] && gridData[r][c]) {
                     const cell = gridData[r][c];
+                    // console.log(`Drawing cell (${r}, ${c}):`, cell);
                     ctx.fillStyle = '#333';
 
                     let textToDraw = "";
                     if (displayMode === 'number') {
                         textToDraw = cell.num;
                         ctx.font = '14px "Tiro Kannada"'; // Standard font for nums
-                    } else {
-                        textToDraw = cell.char || "?";
-                        ctx.font = '20px "Tiro Kannada"'; // Larger for Aksharas
+                    } else if (displayMode === 'ಅಕ್ಷರಗಳು'){
+                        textToDraw = cell.char[0] || "?";
+                        ctx.font = '16px "Tiro Kannada"'; // Larger for ಅಕ್ಷರಗಳು
                     }
+                    else {
+                        textToDraw = cell.char[1] || "?";
+                        ctx.font = '16px "Tiro Devanagari Hindi"'; // Larger for अक्षराणी
+                        }
 
                     ctx.fillText(textToDraw, x + CELL_SIZE / 2, y + CELL_SIZE / 2);
                 }
@@ -220,13 +225,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Prepare payload: just list of [r, c]
         const points = pathPoints.map(p => [p.r, p.c]);
+        if (displayMode === 'ಅಕ್ಷರಗಳು') script = 'kannada';
+        else script = 'devanagari';
+        // console.log("Extract text for:", JSON.stringify({ points, script }));
 
         fetch('/api/traverse', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ points })
+            body: JSON.stringify({ points, script })
         })
             .then(res => res.json())
             .then(data => {
@@ -346,27 +354,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (generateBtn) {
         generateBtn.addEventListener('click', () => {
-            console.log("Go button clicked");
             const formula = formulaInput.value.trim();
-            console.log("Formula:", formula);
+            // console.log("Formula:", formula);
 
             if (!formula) {
                 console.warn("Empty formula");
                 return;
             }
 
-            console.log("Sending request to /api/traverse");
+            if (displayMode === 'ಅಕ್ಷರಗಳು') script = 'kannada';
+            else script = 'devanagari'; console.log("Default script for generation:", script);
+            // console.log("Sending request to /api/traverse");
             fetch('/api/traverse', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ formula })
+                body: JSON.stringify({ formula, script })
             })
                 .then(res => {
                     console.log("Response status:", res.status);
                     return res.json();
                 })
                 .then(data => {
-                    console.log("Data received:", data);
+                    // console.log("Data received:", data);
                     if (data.points) {
                         pathPoints = data.points.map(p => ({ r: p[0], c: p[1] }));
                         cellCountSpan.textContent = pathPoints.length;
