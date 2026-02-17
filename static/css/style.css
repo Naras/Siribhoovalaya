@@ -31,6 +31,19 @@ header {
     text-align: center;
 }
 
+.input-group {
+    display: flex;
+    gap: 5px;
+    width: 100%;
+}
+
+.input-group input {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
 main {
     display: flex;
     flex-wrap: wrap;

@@ -24,6 +24,29 @@
 
             <div class="controls">
                 <h2>Controls</h2>
+
+                <div class="control-group upload-section">
+                    <label>Load Excel Grid:</label>
+                    <div class="input-group">
+                        <input type="file" id="chakraFile" accept=".xls,.xlsx">
+                        <button id="uploadBtn">Load</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Save/Load Path:</label>
+                    <div class="input-group">
+                        <input type="text" id="pathNameInput" placeholder="Name">
+                        <button id="savePathBtn">Save</button>
+                    </div>
+                    <div class="input-group" style="margin-top: 5px;">
+                        <select id="savedPathsSelect">
+                            <option value="">-- Select Saved Path --</option>
+                        </select>
+                        <button id="loadPathBtn">Load</button>
+                    </div>
+                </div>
+                <hr>
                 <div class="control-group">
                     <label>Current Mode:</label>
                     <select id="interactionMode">
@@ -37,6 +60,14 @@
                     <div class="toggle-group">
                         <label><input type="radio" name="displayMode" value="number" checked> Numbers</label>
                         <label><input type="radio" name="displayMode" value="akshara"> Aksharas</label>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Formula (y=f(x)):</label>
+                    <div class="input-group">
+                        <input type="text" id="bandhaFormula" placeholder="e.g. x, x^2, sin(x)*10+13">
+                        <button id="generateBandhaBtn">Go</button>
                     </div>
                 </div>
 

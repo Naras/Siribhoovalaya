@@ -26,16 +26,61 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Fetch grid data
-    fetch('/api/grid')
-        .then(response => response.json())
-        .then(data => {
-            gridData = data;
-            drawGrid();
-        })
-        .catch(err => {
-            console.error("Failed to load grid:", err);
-            outputDiv.textContent = "Error loading grid data. Please check console.";
+    loadGrid();
+
+    function loadGrid() {
+        fetch('/api/grid')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    outputDiv.textContent = data.error;
+                    return;
+                }
+                gridData = data;
+                drawGrid();
+            })
+            .catch(err => {
+                console.error("Failed to load grid:", err);
+                outputDiv.textContent = "Error loading grid data. Please check console.";
+            });
+    }
+
+    // Upload Logic
+    const uploadBtn = document.getElementById('uploadBtn');
+    const fileInput = document.getElementById('chakraFile');
+
+    if (uploadBtn) {
+        uploadBtn.addEventListener('click', () => {
+            const file = fileInput.files[0];
+            if (!file) {
+                alert("Please select a file first.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            outputDiv.textContent = "Uploading...";
+
+            fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        outputDiv.textContent = "Grid loaded successfully!";
+                        loadGrid(); // Reload grid data
+                    } else {
+                        outputDiv.textContent = "Error: " + data.error;
+                    }
+                })
+                .catch(err => {
+                    console.error("Upload error:", err);
+                    outputDiv.textContent = "Upload failed.";
+                });
         });
+    }
 
     // Drawing function
     function drawGrid() {
@@ -192,4 +237,149 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error(err);
             });
     });
+
+    // Save/Load Logic
+    const savePathBtn = document.getElementById('savePathBtn');
+    const loadPathBtn = document.getElementById('loadPathBtn');
+    const pathNameInput = document.getElementById('pathNameInput');
+    const savedPathsSelect = document.getElementById('savedPathsSelect');
+
+    function updateSavedPathsList() {
+        fetch('/api/paths')
+            .then(res => res.json())
+            .then(names => {
+                savedPathsSelect.innerHTML = '<option value="">-- Select Saved Path --</option>';
+                names.forEach(name => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    savedPathsSelect.appendChild(option);
+                });
+            })
+            .catch(err => console.error("Error fetching paths:", err));
+    }
+
+    // Load paths on startup
+    updateSavedPathsList();
+
+    if (savePathBtn) {
+        savePathBtn.addEventListener('click', () => {
+            const name = pathNameInput.value.trim();
+            if (!name) {
+                alert("Please enter a name for the path.");
+                return;
+            }
+            if (pathPoints.length === 0 && !formulaInput.value.trim()) {
+                alert("Nothing to save (no points or formula).");
+                return;
+            }
+
+            const payload = {
+                name: name,
+                points: pathPoints.map(p => [p.r, p.c]),
+                formula: formulaInput.value.trim(),
+                text: outputDiv.textContent
+            };
+
+            fetch('/api/paths', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("Path saved successfully!");
+                        pathNameInput.value = '';
+                        updateSavedPathsList();
+                    } else {
+                        alert("Error saving: " + data.error);
+                    }
+                })
+                .catch(err => console.error("Save error:", err));
+        });
+    }
+
+    if (loadPathBtn) {
+        loadPathBtn.addEventListener('click', () => {
+            const name = savedPathsSelect.value;
+            if (!name) {
+                alert("Please select a path to load.");
+                return;
+            }
+
+            fetch(`/api/paths/${name}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) {
+                        alert("Error loading: " + data.error);
+                        return;
+                    }
+
+                    // Restore state
+                    if (data.points) {
+                        pathPoints = data.points.map(p => ({ r: p[0], c: p[1] }));
+                    } else {
+                        pathPoints = [];
+                    }
+
+                    if (data.formula) {
+                        formulaInput.value = data.formula;
+                    } else {
+                        formulaInput.value = '';
+                    }
+
+                    if (data.text) {
+                        outputDiv.textContent = data.text;
+                    }
+
+                    cellCountSpan.textContent = pathPoints.length;
+                    drawGrid();
+                })
+                .catch(err => console.error("Load error:", err));
+        });
+    }
+
+    // Go Button Logic
+    const formulaInput = document.getElementById('bandhaFormula');
+    const generateBtn = document.getElementById('generateBandhaBtn');
+
+    if (generateBtn) {
+        generateBtn.addEventListener('click', () => {
+            console.log("Go button clicked");
+            const formula = formulaInput.value.trim();
+            console.log("Formula:", formula);
+
+            if (!formula) {
+                console.warn("Empty formula");
+                return;
+            }
+
+            console.log("Sending request to /api/traverse");
+            fetch('/api/traverse', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ formula })
+            })
+                .then(res => {
+                    console.log("Response status:", res.status);
+                    return res.json();
+                })
+                .then(data => {
+                    console.log("Data received:", data);
+                    if (data.points) {
+                        pathPoints = data.points.map(p => ({ r: p[0], c: p[1] }));
+                        cellCountSpan.textContent = pathPoints.length;
+                        drawGrid();
+                    }
+                    outputDiv.textContent = data.text;
+                })
+                .catch(err => {
+                    outputDiv.textContent = "Error generating bandha.";
+                    console.error("Fetch error:", err);
+                });
+        });
+    } else {
+        console.error("Generate button not found!");
+    }
 });

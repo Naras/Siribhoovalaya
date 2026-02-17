@@ -31,3 +31,7 @@ htmlcov/
 
 # Logs
 *.log
+
+# Own ignorable files
+Sessoion-log.txt
+session_summary.md
