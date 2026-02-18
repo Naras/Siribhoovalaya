@@ -56,7 +56,7 @@ class TestFunctionalBandha(unittest.TestCase):
     def test_api_endpoint(self):
         """Test the /api/traverse endpoint with formula"""
         response = self.app.post('/api/traverse', 
-                               data=json.dumps({'formula': 'x'}),
+                               data=json.dumps({'formula': 'x', 'script':'kannada'}),
                                content_type='application/json')
         
         data = json.loads(response.data)

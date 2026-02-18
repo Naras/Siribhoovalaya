@@ -17,6 +17,276 @@ document.addEventListener('DOMContentLoaded', () => {
     let isDrawing = false;
     let displayMode = 'number';
 
+    // Simple auth state (stored in-memory and in localStorage)
+    let authState = {
+        accessToken: null,
+        email: null,
+        role: null,
+    };
+
+    function loadAuthState() {
+        try {
+            const raw = localStorage.getItem('sb_auth');
+            if (!raw) return;
+            const parsed = JSON.parse(raw);
+            if (parsed && parsed.accessToken && parsed.email && parsed.role) {
+                authState = parsed;
+            }
+        } catch (e) {
+            console.warn('Failed to load auth from localStorage', e);
+        }
+    }
+
+    function saveAuthState() {
+        try {
+            if (authState && authState.accessToken) {
+                localStorage.setItem('sb_auth', JSON.stringify(authState));
+            } else {
+                localStorage.removeItem('sb_auth');
+            }
+        } catch (e) {
+            console.warn('Failed to save auth to localStorage', e);
+        }
+    }
+
+    function clearAuthState() {
+        authState = { accessToken: null, email: null, role: null };
+        saveAuthState();
+        renderAuthBar();
+    }
+
+    function getAuthHeaders(baseHeaders = {}) {
+        const headers = { ...baseHeaders };
+        if (authState.accessToken) {
+            headers['Authorization'] = `Bearer ${authState.accessToken}`;
+        }
+        return headers;
+    }
+
+    function renderAuthBar() {
+        let authBar = document.getElementById('authBar');
+        if (!authBar) {
+            const header = document.querySelector('header');
+            if (!header) {
+                return;
+            }
+            authBar = document.createElement('div');
+            authBar.id = 'authBar';
+            authBar.style.display = 'flex';
+            authBar.style.justifyContent = 'flex-end';
+            authBar.style.gap = '8px';
+            authBar.style.alignItems = 'center';
+            header.appendChild(authBar);
+        }
+
+        authBar.innerHTML = '';
+
+        if (!authState.accessToken) {
+            // Not logged in: show Register / Login
+            const registerBtn = document.createElement('button');
+            registerBtn.textContent = 'Register';
+            registerBtn.addEventListener('click', handleRegisterClick);
+
+            const loginBtn = document.createElement('button');
+            loginBtn.textContent = 'Login';
+            loginBtn.addEventListener('click', handleLoginClick);
+
+            authBar.appendChild(registerBtn);
+            authBar.appendChild(loginBtn);
+        } else {
+            // Logged in
+            const infoSpan = document.createElement('span');
+            infoSpan.textContent = `${authState.email} (${authState.role})`;
+            infoSpan.style.marginRight = '8px';
+
+            const logoutBtn = document.createElement('button');
+            logoutBtn.textContent = 'Logout';
+            logoutBtn.addEventListener('click', () => {
+                clearAuthState();
+                alert('Logged out.');
+            });
+
+            authBar.appendChild(infoSpan);
+
+            if (authState.role === 'Administrator') {
+                const usersBtn = document.createElement('button');
+                usersBtn.textContent = 'View Users';
+                usersBtn.addEventListener('click', handleViewUsersClick);
+                authBar.appendChild(usersBtn);
+            }
+
+            authBar.appendChild(logoutBtn);
+        }
+    }
+
+    function handleRegisterClick() {
+        const email = window.prompt('Enter email to register:');
+        if (!email) return;
+        const password = window.prompt('Enter password (min 8, 1 upper, 1 digit, 1 special):');
+        if (!password) return;
+
+        // Normal users self-register; do not allow self-setting Administrator here.
+        const payload = { email, password };
+
+        fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        })
+            .then(res => res.json().then(data => ({ status: res.status, data })))
+            .then(({ status, data }) => {
+                if (status !== 201) {
+                    alert(data.error || 'Registration failed.');
+                    return;
+                }
+                authState = {
+                    accessToken: data.access_token,
+                    email: data.email,
+                    role: data.role,
+                };
+                saveAuthState();
+                renderAuthBar();
+                alert('Registration successful.');
+            })
+            .catch(err => {
+                console.error('Register error', err);
+                alert('Registration error, please check console.');
+            });
+    }
+
+    function handleLoginClick() {
+        const email = window.prompt('Enter email:');
+        if (!email) return;
+        const password = window.prompt('Enter password:');
+        if (!password) return;
+
+        const payload = { email, password };
+
+        fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        })
+            .then(res => res.json().then(data => ({ status: res.status, data })))
+            .then(({ status, data }) => {
+                if (status !== 200) {
+                    alert(data.error || 'Login failed.');
+                    return;
+                }
+                authState = {
+                    accessToken: data.access_token,
+                    email: data.email,
+                    role: data.role,
+                };
+                saveAuthState();
+                renderAuthBar();
+                alert('Login successful.');
+            })
+            .catch(err => {
+                console.error('Login error', err);
+                alert('Login error, please check console.');
+            });
+    }
+
+    function handleViewUsersClick() {
+        fetch('/api/auth/users', {
+            method: 'GET',
+            headers: getAuthHeaders(),
+        })
+            .then(res => res.json().then(data => ({ status: res.status, data })))
+            .then(({ status, data }) => {
+                if (status !== 200) {
+                    alert((data && data.error) || 'Failed to load users.');
+                    return;
+                }
+                if (!Array.isArray(data) || data.length === 0) {
+                    alert('No users found.');
+                    return;
+                }
+                const lines = data.map(
+                    u => `${u.id}: ${u.email} [${u.role}]`
+                );
+                alert('Registered users:\n\n' + lines.join('\n'));
+
+                // Simple admin actions: promote or delete a user.
+                const action = window.prompt(
+                    'Admin actions:\n' +
+                    'P <id>  - Promote user to Administrator\n' +
+                    'D <id>  - Delete user\n\n' +
+                    'Example: "P 2" or "D 3". Leave blank to cancel.'
+                );
+                if (!action) {
+                    return;
+                }
+
+                const parts = action.trim().split(/\s+/);
+                if (parts.length !== 2) {
+                    alert('Invalid command. Use "P <id>" or "D <id>".');
+                    return;
+                }
+
+                const cmd = parts[0].toUpperCase();
+                const idStr = parts[1];
+                const userId = parseInt(idStr, 10);
+                if (Number.isNaN(userId)) {
+                    alert('Invalid user ID.');
+                    return;
+                }
+
+                if (cmd === 'P') {
+                    // Promote to Administrator
+                    fetch(`/api/auth/users/${userId}/role`, {
+                        method: 'PATCH',
+                        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                        body: JSON.stringify({ role: 'Administrator' }),
+                    })
+                        .then(res => res.json().then(respData => ({ status: res.status, data: respData })))
+                        .then(({ status, data }) => {
+                            if (status !== 200) {
+                                alert((data && data.error) || 'Failed to update user role.');
+                                return;
+                            }
+                            alert(`User ${userId} promoted to Administrator.`);
+                        })
+                        .catch(err => {
+                            console.error('Promote user error', err);
+                            alert('Error promoting user, please check console.');
+                        });
+                } else if (cmd === 'D') {
+                    // Delete user
+                    const confirmed = window.confirm(
+                        `Are you sure you want to delete user ${userId}? This cannot be undone.`
+                    );
+                    if (!confirmed) {
+                        return;
+                    }
+
+                    fetch(`/api/auth/users/${userId}`, {
+                        method: 'DELETE',
+                        headers: getAuthHeaders(),
+                    })
+                        .then(res => res.json().then(respData => ({ status: res.status, data: respData })))
+                        .then(({ status, data }) => {
+                            if (status !== 200) {
+                                alert((data && data.error) || 'Failed to delete user.');
+                                return;
+                            }
+                            alert(`User ${userId} deleted.`);
+                        })
+                        .catch(err => {
+                            console.error('Delete user error', err);
+                            alert('Error deleting user, please check console.');
+                        });
+                } else {
+                    alert('Unknown command. Use "P <id>" or "D <id>".');
+                }
+            })
+            .catch(err => {
+                console.error('View users error', err);
+                alert('Error loading users, please check console.');
+            });
+    }
+
     // Display mode toggle
     document.querySelectorAll('input[name="displayMode"]').forEach(radio => {
         radio.addEventListener('change', (e) => {
@@ -24,6 +294,10 @@ document.addEventListener('DOMContentLoaded', () => {
             drawGrid();
         });
     });
+
+    // Load auth state and render navbar
+    loadAuthState();
+    renderAuthBar();
 
     // Fetch grid data
     loadGrid();
@@ -289,9 +563,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 text: outputDiv.textContent
             };
 
+            if (!authState.accessToken || authState.role !== 'Administrator') {
+                alert('Only logged-in administrators can save paths.');
+                return;
+            }
+
             fetch('/api/paths', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify(payload)
             })
                 .then(res => res.json())
@@ -354,6 +633,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (generateBtn) {
         generateBtn.addEventListener('click', () => {
+            console.log("Go button clicked");
             const formula = formulaInput.value.trim();
             // console.log("Formula:", formula);
 
