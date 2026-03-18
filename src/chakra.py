@@ -1,7 +1,7 @@
 
 import pandas as pd
 import os
-from .transliterate import AKSHARA_MAP, transliterate_text
+from src.transliterate import AKSHARA_MAP, transliterate_text
 
 class Chakra:
     def __init__(self, file_path, sheet_name='Sheet1'):
