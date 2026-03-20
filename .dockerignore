@@ -35,3 +35,6 @@ htmlcov/
 # Own ignorable files
 Session-log.txt
 session_summary.md
+
+*.db
+saved_paths/

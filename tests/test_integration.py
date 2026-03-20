@@ -14,7 +14,7 @@ class TestSiribhoovalaya(unittest.TestCase):
     def setUp(self):
         # Assuming run from root
         self.base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.excel_path = os.path.join(self.base_dir, 'Adhyaya_One_Chakras.xls')
+        self.excel_path = os.path.join(self.base_dir, 'Adhyaya_One_Chakras.xlsx')
         
     def test_grid_loads(self):
         # We need to test the actual loading if the file exists
@@ -37,6 +37,37 @@ class TestSiribhoovalaya(unittest.TestCase):
         # Verify it's a valid kannada char (e.g. ord in range) or specific value
         # \u0c85 is independent A.
         self.assertEqual(kannada_char, '\u0c85')
+
+    def test_search_grid(self):
+        if os.path.exists(self.excel_path):
+            chakra = Chakra(self.excel_path, sheet_name='Chakra1-1-1')
+            from src.search import search_grid
+            
+            # Extract first two characters in the grid
+            akshara1 = chakra.get_akshara_at(0, 0, 'kannada')[0]
+            # Since cell can be ?, we skip if invalid
+            if akshara1 == "?": return
+            akshara2 = chakra.get_akshara_at(0, 1, 'kannada')[0]
+            
+            target = akshara1 + akshara2
+            
+            # Test exact match
+            res = search_grid(chakra, target, measure='exact')
+            self.assertTrue(len(res) > 0)
+            self.assertEqual(res[0]['distance'], 0)
+            
+            # Test hamming
+            target_h = akshara1 + 'ಹ' # assuming 'ಹ' is different
+            res_h = search_grid(chakra, target_h, measure='hamming', max_distance=1)
+            # Find the best distance
+            self.assertTrue(len(res_h) > 0)
+            self.assertLessEqual(res_h[0]['distance'], 1)
+
+            # Test levenshtein
+            target_l = akshara1 + 'ಹ' + akshara2
+            res_l = search_grid(chakra, target_l, measure='levenshtein', max_distance=1)
+            self.assertTrue(len(res_l) > 0)
+            self.assertLessEqual(res_l[0]['distance'], 1)
 
 if __name__ == '__main__':
     unittest.main()

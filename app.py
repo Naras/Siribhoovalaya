@@ -11,6 +11,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 from src.chakra import Chakra
 from src.bandha import Bandha
+from src.search import search_with_bandha_patterns, search_all_pattern_variants
 
 app = Flask(__name__)
 
@@ -381,7 +382,7 @@ def get_grid():
 def traverse_path():
     """
     Accepts a JSON object with 'points' (list of [r, c]).
-    Returns the extracted text.
+    Returns the extracted text both without and with Sandhi conversion.
     """
     data = request.json
     points = data.get('points')
@@ -398,11 +399,158 @@ def traverse_path():
         bandha.set_path(points)
         generated_points = points
         
-    text = bandha.traverse(chakra,script=script)
+    text_without_sandhi, text_with_sandhi = bandha.traverse(chakra, script=script)
     
     return jsonify({
-        'text': text,
+        'text_without_sandhi': text_without_sandhi,
+        'text_with_sandhi': text_with_sandhi,
         'points': generated_points # Return points so UI can draw them if generated
+    })
+
+@app.route('/api/search', methods=['POST'])
+def search_grid_endpoint():
+    """
+    Accepts a JSON object with 'target', 'measure', 'max_distance', 'script', and 'use_sandhi'.
+    Returns the mapped paths matching the target.
+    """
+    data = request.json
+    target = data.get('target', '')
+    measure = data.get('measure', 'exact')
+    try:
+        max_distance = int(data.get('max_distance', 0))
+    except (ValueError, TypeError):
+        max_distance = 0
+    script = data.get('script', 'kannada')
+    use_sandhi = data.get('use_sandhi', False)
+    
+    from src.search import search_grid
+    results = search_grid(chakra, target, measure, max_distance, script, use_sandhi)
+    
+    return jsonify({
+        'matches': results
+    })
+
+@app.route('/api/bandha/horizontal_zigzag', methods=['POST'])
+def horizontal_zigzag_endpoint():
+    """
+    Accepts JSON with 'start_row', 'start_col', 'length', 'script', 'use_sandhi'.
+    Returns the path and extracted text.
+    """
+    data = request.json
+    start_row = int(data.get('start_row', 0))
+    start_col = int(data.get('start_col', 0))
+    length = int(data.get('length', 10))
+    script = data.get('script', 'kannada')
+    use_sandhi = data.get('use_sandhi', False)
+    
+    bandha = Bandha()
+    points = bandha.horizontal_zigzag(start_row, start_col, length)
+    text_without_sandhi, text_with_sandhi = bandha.traverse(chakra, script=script)
+    
+    return jsonify({
+        'points': points,
+        'text_without_sandhi': text_without_sandhi,
+        'text_with_sandhi': text_with_sandhi
+    })
+
+@app.route('/api/bandha/vertical_zigzag', methods=['POST'])
+def vertical_zigzag_endpoint():
+    """
+    Accepts JSON with 'start_row', 'start_col', 'length', 'script', 'use_sandhi'.
+    Returns the path and extracted text.
+    """
+    data = request.json
+    start_row = int(data.get('start_row', 0))
+    start_col = int(data.get('start_col', 0))
+    length = int(data.get('length', 10))
+    script = data.get('script', 'kannada')
+    use_sandhi = data.get('use_sandhi', False)
+    
+    bandha = Bandha()
+    points = bandha.vertical_zigzag(start_row, start_col, length)
+    text_without_sandhi, text_with_sandhi = bandha.traverse(chakra, script=script)
+    
+    return jsonify({
+        'points': points,
+        'text_without_sandhi': text_without_sandhi,
+        'text_with_sandhi': text_with_sandhi
+    })
+
+@app.route('/api/bandha/chess_knight', methods=['POST'])
+def chess_knight_endpoint():
+    """
+    Accepts JSON with 'start_row', 'start_col', 'num_jumps', 'constraints', 'script', 'use_sandhi'.
+    Returns the path and extracted text.
+    """
+    data = request.json
+    start_row = int(data.get('start_row', 0))
+    start_col = int(data.get('start_col', 0))
+    num_jumps = int(data.get('num_jumps', 5))
+    constraints = data.get('constraints', {})
+    script = data.get('script', 'kannada')
+    use_sandhi = data.get('use_sandhi', False)
+    
+    bandha = Bandha()
+    points = bandha.chess_knight_moves(start_row, start_col, num_jumps, constraints)
+    text_without_sandhi, text_with_sandhi = bandha.traverse(chakra, script=script)
+    
+    return jsonify({
+        'points': points,
+        'text_without_sandhi': text_without_sandhi,
+        'text_with_sandhi': text_with_sandhi
+    })
+
+@app.route('/api/search/bandha_pattern', methods=['POST'])
+def search_bandha_pattern_endpoint():
+    """
+    Accepts JSON with 'target', 'pattern_type', 'pattern_params', 'measure', 'max_distance', 'script', 'use_sandhi'.
+    Returns matches using specific bandha pattern.
+    """
+    data = request.json
+    target = data.get('target', '')
+    pattern_type = data.get('pattern_type', '')
+    pattern_params = data.get('pattern_params', {})
+    measure = data.get('measure', 'exact')
+    try:
+        max_distance = int(data.get('max_distance', 0))
+    except (ValueError, TypeError):
+        max_distance = 0
+    script = data.get('script', 'kannada')
+    use_sandhi = data.get('use_sandhi', False)
+    
+    results = search_with_bandha_patterns(
+        chakra, target, pattern_type, pattern_params,
+        measure, max_distance, script, use_sandhi
+    )
+    
+    return jsonify({
+        'matches': results
+    })
+
+@app.route('/api/search/all_pattern_variants', methods=['POST'])
+def search_all_pattern_variants_endpoint():
+    """
+    Accepts JSON with 'target', 'pattern_type', 'measure', 'max_distance', 'script', 'use_sandhi'.
+    Returns matches trying all starting positions for the pattern type.
+    """
+    data = request.json
+    target = data.get('target', '')
+    pattern_type = data.get('pattern_type', '')
+    measure = data.get('measure', 'exact')
+    try:
+        max_distance = int(data.get('max_distance', 0))
+    except (ValueError, TypeError):
+        max_distance = 0
+    script = data.get('script', 'kannada')
+    use_sandhi = data.get('use_sandhi', False)
+    
+    results = search_all_pattern_variants(
+        chakra, target, pattern_type,
+        measure, max_distance, script, use_sandhi
+    )
+    
+    return jsonify({
+        'matches': results
     })
 
 @app.route('/api/upload', methods=['POST'])

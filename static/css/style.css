@@ -44,11 +44,101 @@ header {
     border-radius: 4px;
 }
 
+.pattern-controls {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    background-color: #f9f9f9;
+}
+
+.pattern-subgroup {
+    margin-bottom: 15px;
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    background-color: white;
+}
+
+.pattern-subgroup h4 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #333;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 4px;
+}
+
+.input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 5px;
+}
+
+.input-row label {
+    font-size: 12px;
+    margin: 0;
+    white-space: nowrap;
+}
+
+.input-row input[type="number"] {
+    padding: 4px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.input-row button {
+    padding: 4px 8px;
+    font-size: 12px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.input-row button:hover {
+    background-color: #357abd;
+}
+
 main {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    justify-content: center;
+    width: 100%;
+    max-width: 1400px;
+}
+
+.top-controls {
+    display: flex;
+    gap: 30px;
+    width: 100%;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.text-output-section {
+    flex: 1;
+    min-width: 400px;
+}
+
+.action-controls {
+    flex: 0 0 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.main-content {
     display: flex;
     flex-wrap: wrap;
     gap: 30px;
     justify-content: center;
+    width: 100%;
 }
 
 .grid-container {
@@ -113,17 +203,59 @@ button.primary:hover {
     background-color: #357abd;
 }
 
+.output-area {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+    min-width: 0; /* Allows flex item to shrink below content size */
+}
+
+.output-area h3 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #555;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 4px;
+}
+
 .text-box {
     background: white;
     border: 1px solid #ccc;
     padding: 15px;
-    min-height: 100px;
+    min-height: 80px;
     border-radius: 4px;
     font-family: 'Tiro Kannada', serif;
     /* Good for Kannada rendering */
-    font-size: 1.2em;
-    line-height: 1.6;
+    font-size: 1.1em;
+    line-height: 1.5;
     white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-height: 150px;
+    overflow-y: auto;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.debug-info {
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.debug-info p {
+    margin: 0;
+}
+
+.action-controls .control-group {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
 }
 
 .tooltip {
@@ -137,4 +269,64 @@ button.primary:hover {
     opacity: 0;
     transition: opacity 0.2s;
     font-family: 'Tiro Kannada', sans-serif;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .top-controls {
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .text-output-section {
+        min-width: auto;
+        width: 100%;
+    }
+    
+    .action-controls {
+        flex: 1;
+        width: 100%;
+    }
+    
+    .main-content {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .controls {
+        width: 100%;
+        max-width: 600px;
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+    
+    .top-controls {
+        padding: 15px;
+        gap: 15px;
+    }
+    
+    .action-controls .control-group {
+        padding: 12px;
+    }
+    
+    .text-box {
+        font-size: 1em;
+        min-height: 60px;
+        max-height: 120px;
+        word-break: break-word;
+        overflow-wrap: break-word;
+    }
+    
+    .text-output-section {
+        min-width: 0;
+    }
+    
+    .grid-container canvas {
+        max-width: 100%;
+        height: auto;
+    }
 }

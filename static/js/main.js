@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const extractBtn = document.getElementById('extractTextBtn');
     const clearBtn = document.getElementById('clearPathBtn');
     const outputDiv = document.getElementById('extractedText');
+    const outputDivSandhi = document.getElementById('extractedTextSandhi');
     const tooltip = document.getElementById('tooltip');
 
     // Config
@@ -399,14 +400,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (displayMode === 'number') {
                         textToDraw = cell.num;
                         ctx.font = '14px "Tiro Kannada"'; // Standard font for nums
-                    } else if (displayMode === 'ಅಕ್ಷರಗಳು'){
+                    } else if (displayMode === 'ಅಕ್ಷರಗಳು') {
                         textToDraw = cell.char[0] || "?";
                         ctx.font = '16px "Tiro Kannada"'; // Larger for ಅಕ್ಷರಗಳು
                     }
                     else {
                         textToDraw = cell.char[1] || "?";
                         ctx.font = '16px "Tiro Devanagari Hindi"'; // Larger for अक्षराणी
-                        }
+                    }
 
                     ctx.fillText(textToDraw, x + CELL_SIZE / 2, y + CELL_SIZE / 2);
                 }
@@ -492,6 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
         drawGrid();
         cellCountSpan.textContent = 0;
         outputDiv.textContent = '...';
+        outputDivSandhi.textContent = '...';
     });
 
     extractBtn.addEventListener('click', () => {
@@ -512,10 +514,12 @@ document.addEventListener('DOMContentLoaded', () => {
         })
             .then(res => res.json())
             .then(data => {
-                outputDiv.textContent = data.text;
+                outputDiv.textContent = data.text_without_sandhi || '...';
+                outputDivSandhi.textContent = data.text_with_sandhi || '...';
             })
             .catch(err => {
                 outputDiv.textContent = "Error extracting text.";
+                outputDivSandhi.textContent = "Error extracting text.";
                 console.error(err);
             });
     });
@@ -560,7 +564,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 name: name,
                 points: pathPoints.map(p => [p.r, p.c]),
                 formula: formulaInput.value.trim(),
-                text: outputDiv.textContent
+                text: outputDiv.textContent,
+                text_with_sandhi: outputDivSandhi.textContent
             };
 
             if (!authState.accessToken || authState.role !== 'Administrator') {
@@ -619,6 +624,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (data.text) {
                         outputDiv.textContent = data.text;
                     }
+                    
+                    if (data.text_with_sandhi) {
+                        outputDivSandhi.textContent = data.text_with_sandhi;
+                    }
 
                     cellCountSpan.textContent = pathPoints.length;
                     drawGrid();
@@ -630,6 +639,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Go Button Logic
     const formulaInput = document.getElementById('bandhaFormula');
     const generateBtn = document.getElementById('generateBandhaBtn');
+
+    // Bandha Pattern Controls
+    const hzBtn = document.getElementById('hzBtn');
+    const vzBtn = document.getElementById('vzBtn');
+    const knightBtn = document.getElementById('knightBtn');
+    const patternSearchBtn = document.getElementById('patternSearchBtn');
 
     if (generateBtn) {
         generateBtn.addEventListener('click', () => {
@@ -661,14 +676,291 @@ document.addEventListener('DOMContentLoaded', () => {
                         cellCountSpan.textContent = pathPoints.length;
                         drawGrid();
                     }
-                    outputDiv.textContent = data.text;
+                    outputDiv.textContent = data.text_without_sandhi || '...';
+                    outputDivSandhi.textContent = data.text_with_sandhi || '...';
                 })
                 .catch(err => {
                     outputDiv.textContent = "Error generating bandha.";
+                    outputDivSandhi.textContent = "Error generating bandha.";
                     console.error("Fetch error:", err);
                 });
         });
     } else {
         console.error("Generate button not found!");
+    }
+
+    // Search Logic
+    const searchInput = document.getElementById('searchInput');
+    const searchMeasure = document.getElementById('searchMeasure');
+    const searchMaxDist = document.getElementById('searchMaxDist');
+    const useSandhiCheckbox = document.getElementById('useSandhi');
+    const searchBtn = document.getElementById('searchBtn');
+
+    if (searchBtn) {
+        searchBtn.addEventListener('click', () => {
+            const target = searchInput.value.trim();
+            if (!target) {
+                alert("Please enter target text to search.");
+                return;
+            }
+
+            const measure = searchMeasure.value;
+            const max_distance = parseInt(searchMaxDist.value) || 0;
+            const use_sandhi = useSandhiCheckbox.checked;
+            let script = (displayMode === 'ಅಕ್ಷರಗಳು') ? 'kannada' : 'devanagari';
+
+            outputDiv.textContent = "Searching...";
+
+            fetch('/api/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target, measure, max_distance, script, use_sandhi })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.matches && data.matches.length > 0) {
+                        const match = data.matches[0];
+                        pathPoints = match.path.map(p => ({ r: p[0], c: p[1] }));
+                        cellCountSpan.textContent = pathPoints.length;
+                        
+                        let resultText = `Found (${data.matches.length} results). Best match dist: ${match.distance}.`;
+                        resultText += `\nRaw extracted: ${match.extracted_text}`;
+                        if (match.sandhi_converted_text) {
+                            resultText += `\nSandhi converted: ${match.sandhi_converted_text}`;
+                        }
+                        
+                        outputDiv.textContent = resultText;
+                        drawGrid();
+                    } else {
+                        outputDiv.textContent = "No matches found.";
+                        pathPoints = [];
+                        cellCountSpan.textContent = 0;
+                        drawGrid();
+                    }
+                })
+                .catch(err => {
+                    outputDiv.textContent = "Search error.";
+                    console.error("Search error:", err);
+                });
+        });
+    }
+
+    // Bandha Pattern Functions
+    function getCurrentScript() {
+        return (displayMode === 'ಅಕ್ಷರಗಳು') ? 'kannada' : 'devanagari';
+    }
+
+    function getCurrentUseSandhi() {
+        return useSandhiCheckbox ? useSandhiCheckbox.checked : false;
+    }
+
+    // Horizontal Zig-Zag Handler
+    if (hzBtn) {
+        hzBtn.addEventListener('click', () => {
+            const startRow = parseInt(document.getElementById('hzStartRow').value);
+            const startCol = parseInt(document.getElementById('hzStartCol').value);
+            const length = parseInt(document.getElementById('hzLength').value);
+            const script = getCurrentScript();
+            const use_sandhi = getCurrentUseSandhi();
+
+            fetch('/api/bandha/horizontal_zigzag', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ start_row: startRow, start_col: startCol, length, script, use_sandhi })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    pathPoints = data.points.map(p => ({ r: p[0], c: p[1] }));
+                    cellCountSpan.textContent = pathPoints.length;
+                    outputDiv.textContent = data.text_without_sandhi;
+                    outputDivSandhi.textContent = data.text_with_sandhi;
+                    drawGrid();
+                })
+                .catch(err => {
+                    console.error("Horizontal zig-zag error:", err);
+                    outputDiv.textContent = "Failed to generate horizontal zig-zag pattern.";
+                });
+        });
+    }
+
+    // Vertical Zig-Zag Handler
+    if (vzBtn) {
+        vzBtn.addEventListener('click', () => {
+            const startRow = parseInt(document.getElementById('vzStartRow').value);
+            const startCol = parseInt(document.getElementById('vzStartCol').value);
+            const length = parseInt(document.getElementById('vzLength').value);
+            const script = getCurrentScript();
+            const use_sandhi = getCurrentUseSandhi();
+
+            fetch('/api/bandha/vertical_zigzag', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ start_row: startRow, start_col: startCol, length, script, use_sandhi })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    pathPoints = data.points.map(p => ({ r: p[0], c: p[1] }));
+                    cellCountSpan.textContent = pathPoints.length;
+                    outputDiv.textContent = data.text_without_sandhi;
+                    outputDivSandhi.textContent = data.text_with_sandhi;
+                    drawGrid();
+                })
+                .catch(err => {
+                    console.error("Vertical zig-zag error:", err);
+                    outputDiv.textContent = "Failed to generate vertical zig-zag pattern.";
+                });
+        });
+    }
+
+    // Chess Knight Handler
+    if (knightBtn) {
+        knightBtn.addEventListener('click', () => {
+            const startRow = parseInt(document.getElementById('knightStartRow').value);
+            const startCol = parseInt(document.getElementById('knightStartCol').value);
+            const numJumps = parseInt(document.getElementById('knightJumps').value);
+            const script = getCurrentScript();
+            const use_sandhi = getCurrentUseSandhi();
+
+            // Build constraints
+            const constraints = {};
+            if (document.getElementById('knightAvoidEdges').checked) {
+                constraints.avoid_edges = true;
+            }
+            const seedValue = document.getElementById('knightSeed').value;
+            if (seedValue) {
+                constraints.random_seed = parseInt(seedValue);
+            }
+
+            // Get preferred directions
+            const preferredDirections = [];
+            document.querySelectorAll('input[name="knightDir"]:checked').forEach(checkbox => {
+                preferredDirections.push(checkbox.value);
+            });
+            if (preferredDirections.length > 0) {
+                constraints.preferred_directions = preferredDirections;
+            }
+
+            fetch('/api/bandha/chess_knight', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    start_row: startRow, 
+                    start_col: startCol, 
+                    num_jumps: numJumps, 
+                    constraints, 
+                    script, 
+                    use_sandhi 
+                })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    pathPoints = data.points.map(p => ({ r: p[0], c: p[1] }));
+                    cellCountSpan.textContent = pathPoints.length;
+                    outputDiv.textContent = data.text_without_sandhi;
+                    outputDivSandhi.textContent = data.text_with_sandhi;
+                    drawGrid();
+                })
+                .catch(err => {
+                    console.error("Chess knight error:", err);
+                    outputDiv.textContent = "Failed to generate chess knight pattern.";
+                });
+        });
+    }
+
+    // Pattern Search Handler
+    if (patternSearchBtn) {
+        patternSearchBtn.addEventListener('click', () => {
+            const target = searchInput.value.trim();
+            if (!target) {
+                alert("Please enter target text to search.");
+                return;
+            }
+
+            const patternType = document.getElementById('patternSearchType').value;
+            if (!patternType) {
+                alert("Please select a pattern type for pattern search.");
+                return;
+            }
+
+            const measure = searchMeasure.value;
+            const max_distance = parseInt(searchMaxDist.value) || 0;
+            const script = getCurrentScript();
+            const use_sandhi = getCurrentUseSandhi();
+            const searchAllVariants = document.getElementById('searchAllVariants').checked;
+
+            outputDiv.textContent = "Searching with pattern...";
+
+            if (searchAllVariants) {
+                // Search all variants
+                fetch('/api/search/all_pattern_variants', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ target, pattern_type: patternType, measure, max_distance, script, use_sandhi })
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        handlePatternSearchResults(data, target);
+                    })
+                    .catch(err => {
+                        console.error("Pattern search error:", err);
+                        outputDiv.textContent = "Pattern search failed. See console for details.";
+                    });
+            } else {
+                // Search with specific parameters
+                let patternParams = {};
+                
+                if (patternType === 'horizontal_zigzag' || patternType === 'vertical_zigzag') {
+                    patternParams = {
+                        start_row: 13,
+                        start_col: 13,
+                        length: target.length
+                    };
+                } else if (patternType === 'chess_knight') {
+                    patternParams = {
+                        start_row: 13,
+                        start_col: 13,
+                        num_jumps: target.length - 1,
+                        constraints: { random_seed: 42 }
+                    };
+                }
+
+                fetch('/api/search/bandha_pattern', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ target, pattern_type: patternType, pattern_params: patternParams, measure, max_distance, script, use_sandhi })
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        handlePatternSearchResults(data, target);
+                    })
+                    .catch(err => {
+                        console.error("Pattern search error:", err);
+                        outputDiv.textContent = "Pattern search failed. See console for details.";
+                    });
+            }
+        });
+    }
+
+    function handlePatternSearchResults(data, target) {
+        if (data.matches && data.matches.length > 0) {
+            const match = data.matches[0];
+            pathPoints = match.path.map(p => ({ r: p[0], c: p[1] }));
+            cellCountSpan.textContent = pathPoints.length;
+            
+            let resultText = `Pattern search found (${data.matches.length} results). Best match dist: ${match.distance}.`;
+            resultText += `\nPattern: ${match.pattern_type || 'Unknown'}`;
+            resultText += `\nRaw extracted: ${match.extracted_text}`;
+            if (match.sandhi_converted_text) {
+                resultText += `\nSandhi converted: ${match.sandhi_converted_text}`;
+            }
+            
+            outputDiv.textContent = resultText;
+            drawGrid();
+        } else {
+            outputDiv.textContent = "No pattern matches found.";
+            pathPoints = [];
+            cellCountSpan.textContent = 0;
+            drawGrid();
+        }
     }
 });

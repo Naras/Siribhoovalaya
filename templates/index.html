@@ -18,190 +18,199 @@
         </header>
 
         <main>
-            <div class="grid-container">
-                <canvas id="chakraCanvas" width="810" height="810"></canvas>
-                <div id="tooltip" class="tooltip"></div>
+            <!-- Top Control Bar -->
+            <div class="top-controls">
+                <div class="text-output-section">
+                    <div class="output-area">
+                        <h3>Extracted Text (Without Sandhi):</h3>
+                        <div id="extractedText" class="text-box">...</div>
+                        
+                        <h3>Extracted Text (With Sandhi):</h3>
+                        <div id="extractedTextSandhi" class="text-box">...</div>
+                    </div>
+                </div>
+                
+                <div class="action-controls">
+                    <div class="control-group">
+                        <button id="undoBtn">Undo</button>
+                        <button id="clearPathBtn">Clear Path</button>
+                        <button id="extractTextBtn" class="primary">Extract Text</button>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>Display:</label>
+                        <div class="toggle-group">
+                            <label><input type="radio" name="displayMode" value="number" checked> Numbers</label>
+                            <label><input type="radio" name="displayMode" value="ಅಕ್ಷರಗಳು"> ಅಕ್ಷರಗಳು</label>
+                            <label><input type="radio" name="displayMode" value="अक्षराणी"> अक्षराणी</label>
+                        </div>
+                    </div>
+                    
+                    <div class="debug-info">
+                        <p>Selected Cells: <span id="cellCount">0</span></p>
+                    </div>
+                </div>
             </div>
 
-            <div class="controls">
-                <h2>Controls</h2>
-
-                <div class="control-group upload-section">
-                    <label>Load 27 x 27 Chakra(Grid): </label>
-                    <div class="input-group">
-                        <input type="file" id="chakraFile" accept=".xls,.xlsx">
-                        <button id="uploadBtn">Load</button>
-                    </div>
+            <!-- Grid and Advanced Controls -->
+            <div class="main-content">
+                <div class="grid-container">
+                    <canvas id="chakraCanvas" width="810" height="810"></canvas>
+                    <div id="tooltip" class="tooltip"></div>
                 </div>
 
-                <div class="control-group">
-                    <label>Save/Load Path:</label>
-                    <div class="input-group">
-                        <input type="text" id="pathNameInput" placeholder="Name">
-                        <button id="savePathBtn">Save</button>
+                <div class="controls">
+                    <h2>Advanced Controls</h2>
+                    <div class="control-group upload-section">
+                        <label>Load 27 x 27 Chakra(Grid): </label>
+                        <div class="input-group">
+                            <input type="file" id="chakraFile" accept=".xls,.xlsx">
+                            <button id="uploadBtn">Load</button>
+                        </div>
                     </div>
-                    <div class="input-group" style="margin-top: 5px;">
-                        <select id="savedPathsSelect">
-                            <option value="">-- Select Saved Path --</option>
+
+                    <div class="control-group">
+                        <label>Save/Load Path:</label>
+                        <div class="input-group">
+                            <input type="text" id="pathNameInput" placeholder="Name">
+                            <button id="savePathBtn">Save</button>
+                        </div>
+                        <div class="input-group" style="margin-top: 5px;">
+                            <select id="savedPathsSelect">
+                                <option value="">-- Select Saved Path --</option>
+                            </select>
+                            <button id="loadPathBtn">Load</button>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="control-group">
+                        <label>Current Mode:</label>
+                        <select id="interactionMode">
+                            <option value="view">View/Inspect</option>
+                            <option value="draw">Draw Path</option>
                         </select>
-                        <button id="loadPathBtn">Load</button>
                     </div>
-                </div>
-                <hr>
-                <div class="control-group">
-                    <label>Current Mode:</label>
-                    <select id="interactionMode">
-                        <option value="view">View/Inspect</option>
-                        <option value="draw">Draw Path</option>
-                    </select>
-                </div>
 
-                <div class="control-group">
-                    <label>Display:</label>
-                    <div class="toggle-group">
-                        <label><input type="radio" name="displayMode" value="number" checked> Numbers</label>
-                        <label><input type="radio" name="displayMode" value="ಅಕ್ಷರಗಳು"> ಅಕ್ಷರಗಳು</label>
-                        <label><input type="radio" name="displayMode" value="अक्षराणी"> अक्षराणी</label>
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <label>Formula (y=f(x)):</label>
-                    <div class="input-group">
-                        <input type="text" id="bandhaFormula" placeholder="e.g. x, x^2, sin(x)*10+13">
-                        <button id="generateBandhaBtn">Go</button>
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <label>Bandha Patterns:</label>
-                    <div class="pattern-controls">
-                        <!-- Horizontal Zig-Zag -->
-                        <div class="pattern-subgroup">
-                            <h4>Horizontal Zig-Zag</h4>
-                            <div class="input-row">
-                                <label>Start Row:</label>
-                                <input type="number" id="hzStartRow" value="13" min="0" max="26" style="width: 60px;">
-                                <label>Start Col:</label>
-                                <input type="number" id="hzStartCol" value="10" min="0" max="26" style="width: 60px;">
-                                <label>Length:</label>
-                                <input type="number" id="hzLength" value="12" min="1" max="50" style="width: 60px;">
-                                <button id="hzBtn">Generate</button>
-                            </div>
+                    <div class="control-group">
+                        <label>Formula (y=f(x)):</label>
+                        <div class="input-group">
+                            <input type="text" id="bandhaFormula" placeholder="e.g. x, x^2, sin(x)*10+13">
+                            <button id="generateBandhaBtn">Go</button>
                         </div>
+                    </div>
 
-                        <!-- Vertical Zig-Zag -->
-                        <div class="pattern-subgroup">
-                            <h4>Vertical Zig-Zag</h4>
-                            <div class="input-row">
-                                <label>Start Row:</label>
-                                <input type="number" id="vzStartRow" value="10" min="0" max="26" style="width: 60px;">
-                                <label>Start Col:</label>
-                                <input type="number" id="vzStartCol" value="13" min="0" max="26" style="width: 60px;">
-                                <label>Length:</label>
-                                <input type="number" id="vzLength" value="12" min="1" max="50" style="width: 60px;">
-                                <button id="vzBtn">Generate</button>
+                    <div class="control-group">
+                        <label>Bandha Patterns:</label>
+                        <div class="pattern-controls">
+                            <!-- Horizontal Zig-Zag -->
+                            <div class="pattern-subgroup">
+                                <h4>Horizontal Zig-Zag</h4>
+                                <div class="input-row">
+                                    <label>Start Row:</label>
+                                    <input type="number" id="hzStartRow" value="13" min="0" max="26" style="width: 60px;">
+                                    <label>Start Col:</label>
+                                    <input type="number" id="hzStartCol" value="10" min="0" max="26" style="width: 60px;">
+                                    <label>Length:</label>
+                                    <input type="number" id="hzLength" value="12" min="1" max="50" style="width: 60px;">
+                                    <button id="hzBtn">Generate</button>
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- Chess Knight Moves -->
-                        <div class="pattern-subgroup">
-                            <h4>Chess Knight Moves</h4>
-                            <div class="input-row">
-                                <label>Start Row:</label>
-                                <input type="number" id="knightStartRow" value="13" min="0" max="26" style="width: 60px;">
-                                <label>Start Col:</label>
-                                <input type="number" id="knightStartCol" value="13" min="0" max="26" style="width: 60px;">
-                                <label>Jumps:</label>
-                                <input type="number" id="knightJumps" value="6" min="1" max="20" style="width: 60px;">
-                                <button id="knightBtn">Generate</button>
+                            <!-- Vertical Zig-Zag -->
+                            <div class="pattern-subgroup">
+                                <h4>Vertical Zig-Zag</h4>
+                                <div class="input-row">
+                                    <label>Start Row:</label>
+                                    <input type="number" id="vzStartRow" value="10" min="0" max="26" style="width: 60px;">
+                                    <label>Start Col:</label>
+                                    <input type="number" id="vzStartCol" value="13" min="0" max="26" style="width: 60px;">
+                                    <label>Length:</label>
+                                    <input type="number" id="vzLength" value="12" min="1" max="50" style="width: 60px;">
+                                    <button id="vzBtn">Generate</button>
+                                </div>
                             </div>
-                            <div class="input-row" style="margin-top: 5px;">
-                                <label style="display:inline;font-size:12px;">
-                                    <input type="checkbox" id="knightAvoidEdges"> Avoid Edges
-                                </label>
-                                <label style="display:inline;font-size:12px;margin-left:10px;">
-                                    Random Seed:
-                                    <input type="number" id="knightSeed" value="42" min="0" max="9999" style="width: 60px;">
-                                </label>
-                            </div>
-                            <div class="input-row" style="margin-top: 5px;">
-                                <label style="display:inline;font-size:12px;">Preferred Directions:</label>
-                                <label style="display:inline;font-size:12px;">
-                                    <input type="checkbox" name="knightDir" value="up"> Up
-                                </label>
-                                <label style="display:inline;font-size:12px;">
-                                    <input type="checkbox" name="knightDir" value="down"> Down
-                                </label>
-                                <label style="display:inline;font-size:12px;">
-                                    <input type="checkbox" name="knightDir" value="left"> Left
-                                </label>
-                                <label style="display:inline;font-size:12px;">
-                                    <input type="checkbox" name="knightDir" value="right"> Right
-                                </label>
+
+                            <!-- Chess Knight Moves -->
+                            <div class="pattern-subgroup">
+                                <h4>Chess Knight Moves</h4>
+                                <div class="input-row">
+                                    <label>Start Row:</label>
+                                    <input type="number" id="knightStartRow" value="13" min="0" max="26" style="width: 60px;">
+                                    <label>Start Col:</label>
+                                    <input type="number" id="knightStartCol" value="13" min="0" max="26" style="width: 60px;">
+                                    <label>Jumps:</label>
+                                    <input type="number" id="knightJumps" value="6" min="1" max="20" style="width: 60px;">
+                                    <button id="knightBtn">Generate</button>
+                                </div>
+                                <div class="input-row" style="margin-top: 5px;">
+                                    <label style="display:inline;font-size:12px;">
+                                        <input type="checkbox" id="knightAvoidEdges"> Avoid Edges
+                                    </label>
+                                    <label style="display:inline;font-size:12px;margin-left:10px;">
+                                        Random Seed:
+                                        <input type="number" id="knightSeed" value="42" min="0" max="9999" style="width: 60px;">
+                                    </label>
+                                </div>
+                                <div class="input-row" style="margin-top: 5px;">
+                                    <label style="display:inline;font-size:12px;">Preferred Directions:</label>
+                                    <label style="display:inline;font-size:12px;">
+                                        <input type="checkbox" name="knightDir" value="up"> Up
+                                    </label>
+                                    <label style="display:inline;font-size:12px;">
+                                        <input type="checkbox" name="knightDir" value="down"> Down
+                                    </label>
+                                    <label style="display:inline;font-size:12px;">
+                                        <input type="checkbox" name="knightDir" value="left"> Left
+                                    </label>
+                                    <label style="display:inline;font-size:12px;">
+                                        <input type="checkbox" name="knightDir" value="right"> Right
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="control-group search-section">
-                    <label>Search Text:</label>
-                    <div class="input-group">
-                        <input type="text" id="searchInput" placeholder="Target text">
-                        <button id="searchBtn">Search</button>
-                    </div>
-                    <div style="margin-top: 5px;">
-                        <label style="display:inline;font-size:12px;">Measure: 
-                            <select id="searchMeasure">
-                                <option value="exact">Exact Search</option>
-                                <option value="hamming">Hamming Distance</option>
-                                <option value="levenshtein">Levenshtein Distance</option>
-                            </select>
-                        </label>
-                        <label style="display:inline;font-size:12px;margin-left:5px;">Max Dist:
-                            <input type="number" id="searchMaxDist" value="0" min="0" style="width: 40px;">
-                        </label>
-                    </div>
-                    <div style="margin-top: 5px;">
-                        <label style="display:inline;font-size:12px;">
-                            <input type="checkbox" id="useSandhi"> Enable Sandhi Conversion (match path text with normal words)
-                        </label>
-                    </div>
-                    <div style="margin-top: 10px;">
-                        <label style="display:inline;font-size:12px;">Pattern Search:</label>
+                    <div class="control-group search-section">
+                        <label>Search Text:</label>
+                        <div class="input-group">
+                            <input type="text" id="searchInput" placeholder="Target text">
+                            <button id="searchBtn">Search</button>
+                        </div>
                         <div style="margin-top: 5px;">
-                            <select id="patternSearchType" style="width: 150px; font-size: 12px;">
-                                <option value="">None (Standard Search)</option>
-                                <option value="horizontal_zigzag">Horizontal Zig-Zag</option>
-                                <option value="vertical_zigzag">Vertical Zig-Zag</option>
-                                <option value="chess_knight">Chess Knight</option>
-                            </select>
-                            <button id="patternSearchBtn" style="margin-left: 5px; font-size: 12px;">Search Pattern</button>
+                            <label style="display:inline;font-size:12px;">Measure: 
+                                <select id="searchMeasure">
+                                    <option value="exact">Exact Search</option>
+                                    <option value="hamming">Hamming Distance</option>
+                                    <option value="levenshtein">Levenshtein Distance</option>
+                                </select>
+                            </label>
+                            <label style="display:inline;font-size:12px;margin-left:5px;">Max Dist:
+                                <input type="number" id="searchMaxDist" value="0" min="0" style="width: 40px;">
+                            </label>
                         </div>
                         <div style="margin-top: 5px;">
                             <label style="display:inline;font-size:12px;">
-                                <input type="checkbox" id="searchAllVariants"> Try All Starting Positions
+                                <input type="checkbox" id="useSandhi"> Enable Sandhi Conversion (match path text with normal words)
                             </label>
                         </div>
+                        <div style="margin-top: 10px;">
+                            <label style="display:inline;font-size:12px;">Pattern Search:</label>
+                            <div style="margin-top: 5px;">
+                                <select id="patternSearchType" style="width: 150px; font-size: 12px;">
+                                    <option value="">None (Standard Search)</option>
+                                    <option value="horizontal_zigzag">Horizontal Zig-Zag</option>
+                                    <option value="vertical_zigzag">Vertical Zig-Zag</option>
+                                    <option value="chess_knight">Chess Knight</option>
+                                </select>
+                                <button id="patternSearchBtn" style="margin-left: 5px; font-size: 12px;">Search Pattern</button>
+                            </div>
+                            <div style="margin-top: 5px;">
+                                <label style="display:inline;font-size:12px;">
+                                    <input type="checkbox" id="searchAllVariants"> Try All Starting Positions
+                                </label>
+                            </div>
+                        </div>
                     </div>
-                </div>
-
-                <div class="control-group">
-                    <button id="undoBtn">Undo</button>
-                    <button id="clearPathBtn">Clear Path</button>
-                    <button id="extractTextBtn" class="primary">Extract Text</button>
-                </div>
-
-                <div class="output-area">
-                    <h3>Extracted Text (Without Sandhi):</h3>
-                    <div id="extractedText" class="text-box">...</div>
-                    
-                    <h3>Extracted Text (With Sandhi):</h3>
-                    <div id="extractedTextSandhi" class="text-box">...</div>
-                </div>
-
-                <div class="debug-info">
-                    <p>Selected Cells: <span id="cellCount">0</span></p>
                 </div>
             </div>
         </main>
