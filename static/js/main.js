@@ -1037,6 +1037,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (searchBtn) {
         searchBtn.addEventListener('click', () => {
+            // Check authentication first
+            if (!authState.accessToken) {
+                alert('Please login to perform search operations.');
+                return;
+            }
+            
             const target = searchInput.value.trim();
             if (!target) {
                 alert("Please enter target text to search.");
@@ -1052,7 +1058,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             fetch('/api/search', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ target, measure, max_distance, script, use_sandhi })
             })
                 .then(res => res.json())
@@ -1097,6 +1103,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Pattern Search Handler
     if (patternSearchBtn) {
         patternSearchBtn.addEventListener('click', () => {
+            // Check authentication first
+            if (!authState.accessToken) {
+                alert('Please login to perform pattern search operations.');
+                return;
+            }
+            
             const target = searchInput.value.trim();
             if (!target) {
                 alert("Please enter target text to search.");
@@ -1127,7 +1139,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 allPatternTypes.forEach(patternType => {
                     fetch('/api/search/all_pattern_variants', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                         body: JSON.stringify({ target, pattern_type: patternType, measure, max_distance, script, use_sandhi })
                     })
                     .then(res => res.json())
@@ -1265,7 +1277,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             // console.log(`Request for position (${pos.pattern_params.start_row}, ${pos.pattern_params.start_col}):`, requestBody);
                             fetch('/api/search/bandha_pattern', {
                                 method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
+                                headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                                 body: JSON.stringify({ target, pattern_type: pos.pattern_type, pattern_params: pos.pattern_params, measure, max_distance, script, use_sandhi })
                             })
                             .then(res => res.json())
@@ -1387,7 +1399,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // console.log('Pattern params:', patternParams);
                 fetch('/api/search/bandha_pattern', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ target, pattern_type: patternType, pattern_params: patternParams, measure, max_distance, script, use_sandhi })
                 })
                     .then(res => res.json())

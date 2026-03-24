@@ -408,6 +408,7 @@ def traverse_path():
     })
 
 @app.route('/api/search', methods=['POST'])
+@auth_required
 def search_grid_endpoint():
     """
     Accepts a JSON object with 'target', 'measure', 'max_distance', 'script', and 'use_sandhi'.
@@ -525,6 +526,7 @@ def shreni_bandha_endpoint():
     })
 
 @app.route('/api/search/bandha_pattern', methods=['POST'])
+@auth_required
 def search_bandha_pattern_endpoint():
     """
     Accepts JSON with 'target', 'pattern_type', 'pattern_params', 'measure', 'max_distance', 'script', 'use_sandhi'.
@@ -551,6 +553,7 @@ def search_bandha_pattern_endpoint():
     })
 
 @app.route('/api/search/all_pattern_variants', methods=['POST'])
+@auth_required
 def search_all_pattern_variants_endpoint():
     """
     Accepts JSON with 'target', 'pattern_type', 'measure', 'max_distance', 'script', 'use_sandhi'.
@@ -681,4 +684,4 @@ def get_target_strings():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5009)
+    app.run(debug=True, host='0.0.0.0', port=5000)
