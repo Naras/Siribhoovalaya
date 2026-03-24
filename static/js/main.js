@@ -457,7 +457,11 @@ document.addEventListener('DOMContentLoaded', () => {
             tooltip.style.opacity = 1;
             tooltip.style.left = (e.pageX + 10) + 'px';
             tooltip.style.top = (e.pageY + 10) + 'px';
-            tooltip.textContent = `(${r}, ${c}): ${cell.num} - ${cell.char}`;
+            // Show the starting cell coordinates that would lead to this cell
+            // For Shreni Bandha, if tooltip shows (r,c), algorithm should start from (r+1,c-1)
+            const startRow = r + 1;
+            const startCol = c - 1;
+            tooltip.textContent = `(${startRow}, ${startCol}): ${cell.num} - ${cell.char}`;
         } else {
             tooltip.style.opacity = 0;
         }
@@ -641,10 +645,220 @@ document.addEventListener('DOMContentLoaded', () => {
     const generateBtn = document.getElementById('generateBandhaBtn');
 
     // Bandha Pattern Controls
-    const hzBtn = document.getElementById('hzBtn');
-    const vzBtn = document.getElementById('vzBtn');
-    const knightBtn = document.getElementById('knightBtn');
+    const patternTypeSelect = document.getElementById('patternType');
+    const patternParamsDiv = document.getElementById('patternParams');
     const patternSearchBtn = document.getElementById('patternSearchBtn');
+    let currentPatternGenerateBtn = null;
+
+    // Pattern parameter templates
+    const patternTemplates = {
+        horizontal_zigzag: `
+            <h4>Horizontal Zig-Zag</h4>
+            <div class="param-row">
+                <label>Start Row:</label>
+                <input type="number" id="hzStartRow" value="13" min="0" max="26">
+                <label>Start Col:</label>
+                <input type="number" id="hzStartCol" value="10" min="0" max="26">
+                <label>Length:</label>
+                <input type="number" id="hzLength" value="12" min="1" max="50">
+                <button id="generatePatternBtn">Generate</button>
+            </div>
+        `,
+        vertical_zigzag: `
+            <h4>Vertical Zig-Zag</h4>
+            <div class="param-row">
+                <label>Start Row:</label>
+                <input type="number" id="vzStartRow" value="10" min="0" max="26">
+                <label>Start Col:</label>
+                <input type="number" id="vzStartCol" value="13" min="0" max="26">
+                <label>Length:</label>
+                <input type="number" id="vzLength" value="12" min="1" max="50">
+                <button id="generatePatternBtn">Generate</button>
+            </div>
+        `,
+        chess_knight: `
+            <h4>Chess Knight Moves</h4>
+            <div class="param-row">
+                <label>Start Row:</label>
+                <input type="number" id="knightStartRow" value="13" min="0" max="26">
+                <label>Start Col:</label>
+                <input type="number" id="knightStartCol" value="13" min="0" max="26">
+                <label>Jumps:</label>
+                <input type="number" id="knightJumps" value="6" min="1" max="20">
+                <button id="generatePatternBtn">Generate</button>
+            </div>
+            <div class="param-options">
+                <label>
+                    <input type="checkbox" id="knightAvoidEdges"> Avoid Edges
+                </label>
+                <label style="margin-left: 10px;">
+                    Random Seed:
+                    <input type="number" id="knightSeed" value="42" min="0" max="9999" style="width: 60px;">
+                </label>
+                <div style="margin-top: 5px;">
+                    <label style="font-size: 12px;">Preferred Directions:</label>
+                    <label style="font-size: 12px;">
+                        <input type="checkbox" name="knightDir" value="up"> Up
+                    </label>
+                    <label style="font-size: 12px;">
+                        <input type="checkbox" name="knightDir" value="down"> Down
+                    </label>
+                    <label style="font-size: 12px;">
+                        <input type="checkbox" name="knightDir" value="left"> Left
+                    </label>
+                    <label style="font-size: 12px;">
+                        <input type="checkbox" name="knightDir" value="right"> Right
+                    </label>
+                </div>
+            </div>
+        `,
+        shreni_bandha: `
+            <h4>Shreni Bandha (Diagonal Fold)</h4>
+            <div class="param-row">
+                <label>Start Row:</label>
+                <input type="number" id="shreniStartRow" value="1" min="0" max="26">
+                <label>Start Col:</label>
+                <input type="number" id="shreniStartCol" value="12" min="0" max="26">
+                <label>Steps:</label>
+                <input type="number" id="shreniSteps" value="12" min="1" max="50">
+                <button id="generatePatternBtn">Generate</button>
+            </div>
+            <div class="param-options">
+                <label style="font-size: 12px;">Direction:</label>
+                <label style="font-size: 12px;">
+                    <input type="radio" name="shreniDirection" value="up" checked> Up-Right
+                </label>
+                <label style="font-size: 12px;">
+                    <input type="radio" name="shreniDirection" value="down"> Down-Left
+                </label>
+            </div>
+        `
+    };
+
+    // Pattern type change handler
+    if (patternTypeSelect) {
+        patternTypeSelect.addEventListener('change', (e) => {
+            const patternType = e.target.value;
+            
+            // Clear previous parameters and button event
+            if (currentPatternGenerateBtn) {
+                currentPatternGenerateBtn.removeEventListener('click', handlePatternGeneration);
+            }
+            
+            if (patternType && patternTemplates[patternType]) {
+                patternParamsDiv.innerHTML = patternTemplates[patternType];
+                currentPatternGenerateBtn = document.getElementById('generatePatternBtn');
+                
+                if (currentPatternGenerateBtn) {
+                    currentPatternGenerateBtn.addEventListener('click', handlePatternGeneration);
+                }
+            } else {
+                patternParamsDiv.innerHTML = '<div style="color: #666; font-size: 12px; padding: 10px;">Select a pattern to see parameters</div>';
+                currentPatternGenerateBtn = null;
+            }
+        });
+    }
+
+    // Unified pattern generation handler
+    function handlePatternGeneration() {
+        const patternType = patternTypeSelect.value;
+        const script = getCurrentScript();
+        const use_sandhi = getCurrentUseSandhi();
+        
+        if (!patternType) return;
+        
+        let endpoint, requestData;
+        
+        switch (patternType) {
+            case 'horizontal_zigzag':
+                endpoint = '/api/bandha/horizontal_zigzag';
+                requestData = {
+                    start_row: parseInt(document.getElementById('hzStartRow').value),
+                    start_col: parseInt(document.getElementById('hzStartCol').value),
+                    length: parseInt(document.getElementById('hzLength').value),
+                    script,
+                    use_sandhi
+                };
+                break;
+                
+            case 'vertical_zigzag':
+                endpoint = '/api/bandha/vertical_zigzag';
+                requestData = {
+                    start_row: parseInt(document.getElementById('vzStartRow').value),
+                    start_col: parseInt(document.getElementById('vzStartCol').value),
+                    length: parseInt(document.getElementById('vzLength').value),
+                    script,
+                    use_sandhi
+                };
+                break;
+                
+            case 'chess_knight':
+                endpoint = '/api/bandha/chess_knight';
+                const constraints = {};
+                if (document.getElementById('knightAvoidEdges').checked) {
+                    constraints.avoid_edges = true;
+                }
+                const seedValue = document.getElementById('knightSeed').value;
+                if (seedValue) {
+                    constraints.random_seed = parseInt(seedValue);
+                }
+                const preferredDirections = [];
+                document.querySelectorAll('input[name="knightDir"]:checked').forEach(checkbox => {
+                    preferredDirections.push(checkbox.value);
+                });
+                if (preferredDirections.length > 0) {
+                    constraints.preferred_directions = preferredDirections;
+                }
+                
+                requestData = {
+                    start_row: parseInt(document.getElementById('knightStartRow').value),
+                    start_col: parseInt(document.getElementById('knightStartCol').value),
+                    num_jumps: parseInt(document.getElementById('knightJumps').value),
+                    constraints,
+                    script,
+                    use_sandhi
+                };
+                break;
+                
+            case 'shreni_bandha':
+                endpoint = '/api/bandha/shreni_bandha';
+                requestData = {
+                    start_row: parseInt(document.getElementById('shreniStartRow').value),
+                    start_col: parseInt(document.getElementById('shreniStartCol').value),
+                    num_steps: parseInt(document.getElementById('shreniSteps').value),
+                    direction: document.querySelector('input[name="shreniDirection"]:checked').value,
+                    script,
+                    use_sandhi
+                };
+                break;
+                
+            default:
+                return;
+        }
+        
+        fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestData)
+        })
+            .then(res => res.json())
+            .then(data => {
+                pathPoints = data.points.map(p => ({ r: p[0], c: p[1] }));
+                cellCountSpan.textContent = pathPoints.length;
+                outputDiv.textContent = data.text_without_sandhi;
+                outputDivSandhi.textContent = data.text_with_sandhi;
+                drawGrid();
+            })
+            .catch(err => {
+                console.error("Pattern generation error:", err);
+                outputDiv.textContent = `Failed to generate ${patternType} pattern.`;
+            });
+    }
+
+    // Initialize with empty state
+    if (patternParamsDiv) {
+        patternParamsDiv.innerHTML = '<div style="color: #666; font-size: 12px; padding: 10px;">Select a pattern to see parameters</div>';
+    }
 
     if (generateBtn) {
         generateBtn.addEventListener('click', () => {
@@ -658,7 +872,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (displayMode === 'ಅಕ್ಷರಗಳು') script = 'kannada';
-            else script = 'devanagari'; console.log("Default script for generation:", script);
+            else script = 'devanagari'; // console.log("Default script for generation:", script);
             // console.log("Sending request to /api/traverse");
             fetch('/api/traverse', {
                 method: 'POST',
@@ -695,6 +909,131 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchMaxDist = document.getElementById('searchMaxDist');
     const useSandhiCheckbox = document.getElementById('useSandhi');
     const searchBtn = document.getElementById('searchBtn');
+
+    // Target Strings Dropdown
+    const targetStringsDropdown = document.getElementById('targetStringsDropdown');
+    const refreshStringsBtn = document.getElementById('refreshStringsBtn');
+
+    // Debug: Check if elements are found
+    console.log('Target strings dropdown element:', targetStringsDropdown);
+    console.log('Refresh button element:', refreshStringsBtn);
+
+    // Load target strings from server
+    async function loadTargetStrings() {
+        console.log('Loading target strings...');
+        
+        if (!targetStringsDropdown) {
+            console.error('Target strings dropdown not found!');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/target_strings');
+            console.log('Response status:', response.status);
+            
+            if (!response.ok) {
+                console.warn('Failed to load target strings:', response.statusText);
+                return;
+            }
+            const data = await response.json();
+            console.log('Received data:', data);
+            
+            const strings = data.strings || [];
+            console.log('Strings count:', strings.length);
+            
+            // Clear existing options except the first one
+            targetStringsDropdown.innerHTML = '<option value="">-- Select Target String --</option>';
+            
+            // Add new options with language info
+            strings.forEach(str => {
+                const option = document.createElement('option');
+                option.value = str;
+                const language = detectLanguage(str);
+                option.textContent = `${str} [${language}]`;
+                option.setAttribute('data-language', language);
+                targetStringsDropdown.appendChild(option);
+                console.log(`Added option: ${str} [${language}]`);
+            });
+            
+            console.log('Dropdown population complete');
+        } catch (error) {
+            console.error('Error loading target strings:', error);
+        }
+    }
+
+    // Detect language (Kannada or Devanagari) based on Unicode ranges
+    function detectLanguage(text) {
+        if (!text) return 'Unknown';
+        
+        // Unicode ranges for Kannada (ಅ to ೡ): 0xC85 to 0xCF2
+        // Unicode ranges for Devanagari (अ to ॡ): 0x905 to 0x97F
+        let kannadaCount = 0;
+        let devanagariCount = 0;
+        
+        for (let char of text) {
+            const code = char.charCodeAt(0);
+            if ((code >= 0xC85 && code <= 0xCF2) || (code >= 0xCE6 && code <= 0xCEF)) {
+                kannadaCount++;
+            } else if ((code >= 0x905 && code <= 0x97F) || (code >= 0x966 && code <= 0x96F)) {
+                devanagariCount++;
+            }
+        }
+        
+        if (kannadaCount > devanagariCount) return 'Kannada';
+        if (devanagariCount > kannadaCount) return 'Devanagari';
+        return 'Mixed/Unknown';
+    }
+
+    // Set script mode based on detected language
+    function setScriptMode(language) {
+        const scriptRadios = document.querySelectorAll('input[name="displayMode"]');
+        let targetValue = 'number'; // default
+        
+        if (language === 'Kannada') {
+            targetValue = 'ಅಕ್ಷರಗಳು';
+        } else if (language === 'Devanagari') {
+            targetValue = 'अक्षराणी';
+        }
+        
+        scriptRadios.forEach(radio => {
+            if (radio.value === targetValue) {
+                radio.checked = true;
+                displayMode = targetValue;
+                // Trigger change event to update display
+                radio.dispatchEvent(new Event('change'));
+            }
+        });
+    }
+
+    // Handle dropdown selection
+    if (targetStringsDropdown) {
+        targetStringsDropdown.addEventListener('change', (e) => {
+            const selectedOption = e.target.options[e.target.selectedIndex];
+            const selectedString = e.target.value;
+            const detectedLanguage = selectedOption.getAttribute('data-language');
+            
+            if (selectedString) {
+                searchInput.value = selectedString;
+                
+                // Automatically set script mode based on detected language
+                if (detectedLanguage && detectedLanguage !== 'Mixed/Unknown') {
+                    setScriptMode(detectedLanguage);
+                    console.log(`Language detected: ${detectedLanguage}, script mode set accordingly`);
+                }
+            }
+        });
+    }
+
+    // Handle refresh button
+    if (refreshStringsBtn) {
+        refreshStringsBtn.addEventListener('click', loadTargetStrings);
+    }
+
+    // Load target strings on page load with a small delay to ensure DOM is ready
+    setTimeout(() => {
+        console.log('Attempting to load target strings after timeout...');
+        loadTargetStrings();
+    }, 100);
 
     if (searchBtn) {
         searchBtn.addEventListener('click', () => {
@@ -754,119 +1093,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return useSandhiCheckbox ? useSandhiCheckbox.checked : false;
     }
 
-    // Horizontal Zig-Zag Handler
-    if (hzBtn) {
-        hzBtn.addEventListener('click', () => {
-            const startRow = parseInt(document.getElementById('hzStartRow').value);
-            const startCol = parseInt(document.getElementById('hzStartCol').value);
-            const length = parseInt(document.getElementById('hzLength').value);
-            const script = getCurrentScript();
-            const use_sandhi = getCurrentUseSandhi();
-
-            fetch('/api/bandha/horizontal_zigzag', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ start_row: startRow, start_col: startCol, length, script, use_sandhi })
-            })
-                .then(res => res.json())
-                .then(data => {
-                    pathPoints = data.points.map(p => ({ r: p[0], c: p[1] }));
-                    cellCountSpan.textContent = pathPoints.length;
-                    outputDiv.textContent = data.text_without_sandhi;
-                    outputDivSandhi.textContent = data.text_with_sandhi;
-                    drawGrid();
-                })
-                .catch(err => {
-                    console.error("Horizontal zig-zag error:", err);
-                    outputDiv.textContent = "Failed to generate horizontal zig-zag pattern.";
-                });
-        });
-    }
-
-    // Vertical Zig-Zag Handler
-    if (vzBtn) {
-        vzBtn.addEventListener('click', () => {
-            const startRow = parseInt(document.getElementById('vzStartRow').value);
-            const startCol = parseInt(document.getElementById('vzStartCol').value);
-            const length = parseInt(document.getElementById('vzLength').value);
-            const script = getCurrentScript();
-            const use_sandhi = getCurrentUseSandhi();
-
-            fetch('/api/bandha/vertical_zigzag', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ start_row: startRow, start_col: startCol, length, script, use_sandhi })
-            })
-                .then(res => res.json())
-                .then(data => {
-                    pathPoints = data.points.map(p => ({ r: p[0], c: p[1] }));
-                    cellCountSpan.textContent = pathPoints.length;
-                    outputDiv.textContent = data.text_without_sandhi;
-                    outputDivSandhi.textContent = data.text_with_sandhi;
-                    drawGrid();
-                })
-                .catch(err => {
-                    console.error("Vertical zig-zag error:", err);
-                    outputDiv.textContent = "Failed to generate vertical zig-zag pattern.";
-                });
-        });
-    }
-
-    // Chess Knight Handler
-    if (knightBtn) {
-        knightBtn.addEventListener('click', () => {
-            const startRow = parseInt(document.getElementById('knightStartRow').value);
-            const startCol = parseInt(document.getElementById('knightStartCol').value);
-            const numJumps = parseInt(document.getElementById('knightJumps').value);
-            const script = getCurrentScript();
-            const use_sandhi = getCurrentUseSandhi();
-
-            // Build constraints
-            const constraints = {};
-            if (document.getElementById('knightAvoidEdges').checked) {
-                constraints.avoid_edges = true;
-            }
-            const seedValue = document.getElementById('knightSeed').value;
-            if (seedValue) {
-                constraints.random_seed = parseInt(seedValue);
-            }
-
-            // Get preferred directions
-            const preferredDirections = [];
-            document.querySelectorAll('input[name="knightDir"]:checked').forEach(checkbox => {
-                preferredDirections.push(checkbox.value);
-            });
-            if (preferredDirections.length > 0) {
-                constraints.preferred_directions = preferredDirections;
-            }
-
-            fetch('/api/bandha/chess_knight', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    start_row: startRow, 
-                    start_col: startCol, 
-                    num_jumps: numJumps, 
-                    constraints, 
-                    script, 
-                    use_sandhi 
-                })
-            })
-                .then(res => res.json())
-                .then(data => {
-                    pathPoints = data.points.map(p => ({ r: p[0], c: p[1] }));
-                    cellCountSpan.textContent = pathPoints.length;
-                    outputDiv.textContent = data.text_without_sandhi;
-                    outputDivSandhi.textContent = data.text_with_sandhi;
-                    drawGrid();
-                })
-                .catch(err => {
-                    console.error("Chess knight error:", err);
-                    outputDiv.textContent = "Failed to generate chess knight pattern.";
-                });
-        });
-    }
-
+    
     // Pattern Search Handler
     if (patternSearchBtn) {
         patternSearchBtn.addEventListener('click', () => {
@@ -886,44 +1113,278 @@ document.addEventListener('DOMContentLoaded', () => {
             const max_distance = parseInt(searchMaxDist.value) || 0;
             const script = getCurrentScript();
             const use_sandhi = getCurrentUseSandhi();
-            const searchAllVariants = document.getElementById('searchAllVariants').checked;
+            const tryAllPatterns = document.getElementById('tryAllPatterns').checked;
+            const searchAllStartPositions = document.getElementById('searchAllVariants').checked;
 
             outputDiv.textContent = "Searching with pattern...";
 
-            if (searchAllVariants) {
-                // Search all variants
-                fetch('/api/search/all_pattern_variants', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ target, pattern_type: patternType, measure, max_distance, script, use_sandhi })
-                })
+            if (tryAllPatterns) {
+                // Try all pattern types
+                const allPatternTypes = ['horizontal_zigzag', 'vertical_zigzag', 'chess_knight', 'shreni_bandha'];
+                let allResults = [];
+                let completed = 0;
+                
+                allPatternTypes.forEach(patternType => {
+                    fetch('/api/search/all_pattern_variants', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ target, pattern_type: patternType, measure, max_distance, script, use_sandhi })
+                    })
                     .then(res => res.json())
                     .then(data => {
-                        handlePatternSearchResults(data, target);
+                        // Validate and filter results
+                        const validResults = (Array.isArray(data) ? data : []).filter(result => 
+                            result && typeof result === 'object' && 
+                            typeof result.distance !== 'undefined'
+                        );
+                        allResults = allResults.concat(validResults);
+                        completed++;
+                        if (completed === allPatternTypes.length) {
+                            // Sort and display all results
+                            allResults.sort((a, b) => {
+                                // Sort by distance first
+                                if (a.distance !== b.distance) return a.distance - b.distance;
+                                
+                                // Sort by path length (handle undefined paths)
+                                const aPathLength = a.path ? a.path.length : 0;
+                                const bPathLength = b.path ? b.path.length : 0;
+                                if (aPathLength !== bPathLength) return aPathLength - bPathLength;
+                                
+                                // Sort by position (handle undefined pattern_params)
+                                const aStartRow = a.pattern_params && a.pattern_params.start_row !== undefined ? a.pattern_params.start_row : 999;
+                                const bStartRow = b.pattern_params && b.pattern_params.start_row !== undefined ? b.pattern_params.start_row : 999;
+                                if (aStartRow !== bStartRow) return aStartRow - bStartRow;
+                                
+                                const aStartCol = a.pattern_params && a.pattern_params.start_col !== undefined ? a.pattern_params.start_col : 999;
+                                const bStartCol = b.pattern_params && b.pattern_params.start_col !== undefined ? b.pattern_params.start_col : 999;
+                                return aStartCol - bStartCol;
+                            });
+                            handlePatternSearchResults(allResults, target);
+                        }
                     })
                     .catch(err => {
                         console.error("Pattern search error:", err);
                         outputDiv.textContent = "Pattern search failed. See console for details.";
                     });
+                });
+            } else if (searchAllStartPositions) {
+                // Try all starting positions for selected pattern type
+                // console.log('Trying all starting positions for pattern:', patternType);
+                
+                const allPatternTypes = [patternType]; // Only the selected pattern
+                let allResults = [];
+                let completed = 0;
+                
+                allPatternTypes.forEach(pType => {
+                    // Generate all possible starting positions and parameters
+                    const startPositions = [];
+                    
+                    if (pType === 'shreni_bandha') {
+                        // Generate all Shreni Bandha starting positions
+                        for (let direction of ['up', 'down']) {
+                            for (let startRow = 0; startRow < 27; startRow++) {
+                                for (let startCol = 0; startCol < 27; startCol++) {
+                                    startPositions.push({
+                                        pattern_type: pType,
+                                        pattern_params: {
+                                            start_row: startRow,
+                                            start_col: startCol,
+                                            num_steps: target.length + 3, // Allow some extra length
+                                            direction: direction
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    } else if (pType === 'horizontal_zigzag' || pType === 'vertical_zigzag') {
+                        // Generate all starting positions for zigzag patterns
+                        for (let startRow = 0; startRow < 27; startRow++) {
+                            for (let startCol = 0; startCol < 27; startCol++) {
+                                startPositions.push({
+                                    pattern_type: pType,
+                                    pattern_params: {
+                                        start_row: startRow,
+                                        start_col: startCol,
+                                        length: target.length
+                                    }
+                                });
+                            }
+                        }
+                    } else if (pType === 'chess_knight') {
+                        // Generate all starting positions for chess knight
+                        for (let startRow = 0; startRow < 27; startRow++) {
+                            for (let startCol = 0; startCol < 27; startCol++) {
+                                startPositions.push({
+                                    pattern_type: pType,
+                                    pattern_params: {
+                                        start_row: startRow,
+                                        start_col: startCol,
+                                        num_jumps: target.length - 1,
+                                        constraints: { random_seed: 42 }
+                                    }
+                                });
+                            }
+                        }
+                    }
+                    
+                    // console.log(`Generated ${startPositions.length} starting positions for ${pType}`);
+                    
+                    // Process positions in batches to avoid overwhelming the server
+                    const batchSize = 10; // Reduced from 50
+                    let processed = 0;
+                    
+                    function processBatch() {
+                        const batch = startPositions.slice(processed, processed + batchSize);
+                        if (batch.length === 0) {
+                            // All done for this pattern type
+                            completed++;
+                            if (completed === allPatternTypes.length) {
+                                // Sort and display all results
+                                allResults.sort((a, b) => {
+                                    if (a.distance !== b.distance) return a.distance - b.distance;
+                                    const aPathLength = a.path ? a.path.length : 0;
+                                    const bPathLength = b.path ? b.path.length : 0;
+                                    if (aPathLength !== bPathLength) return aPathLength - bPathLength;
+                                    const aStartRow = a.pattern_params && a.pattern_params.start_row !== undefined ? a.pattern_params.start_row : 999;
+                                    const bStartRow = b.pattern_params && b.pattern_params.start_row !== undefined ? b.pattern_params.start_row : 999;
+                                    if (aStartRow !== bStartRow) return aStartRow - bStartRow;
+                                    const aStartCol = a.pattern_params && a.pattern_params.start_col !== undefined ? a.pattern_params.start_col : 999;
+                                    const bStartCol = b.pattern_params && b.pattern_params.start_col !== undefined ? b.pattern_params.start_col : 999;
+                                    return aStartCol - bStartCol;
+                                });
+                                // console.log(`Final results: ${allResults.length} matches`);
+                                handlePatternSearchResults({ matches: allResults }, target);
+                            }
+                            return;
+                        }
+                        
+                        // Process this batch
+                        let batchCompleted = 0;
+                        batch.forEach(pos => {
+                            const requestBody = { target, pattern_type: pos.pattern_type, pattern_params: pos.pattern_params, measure, max_distance, script, use_sandhi };
+                            // console.log(`Request for position (${pos.pattern_params.start_row}, ${pos.pattern_params.start_col}):`, requestBody);
+                            fetch('/api/search/bandha_pattern', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ target, pattern_type: pos.pattern_type, pattern_params: pos.pattern_params, measure, max_distance, script, use_sandhi })
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                // console.log(`API response for position (${pos.pattern_params.start_row}, ${pos.pattern_params.start_col}):`, data);
+                                if (data.matches && data.matches.length > 0) {
+                                    console.log(`Found ${data.matches.length} matches!`);
+                                    allResults = allResults.concat(data.matches);
+                                }
+                                batchCompleted++;
+                                if (batchCompleted === batch.length) {
+                                    processed += batchSize;
+                                    setTimeout(processBatch, 100); // Increased delay from 10ms to 100ms
+                                }
+                            })
+                            .catch(err => {
+                                console.error("Pattern search error:", err);
+                                batchCompleted++;
+                                if (batchCompleted === batch.length) {
+                                    processed += batchSize;
+                                    setTimeout(processBatch, 100); // Increased delay from 10ms to 100ms
+                                }
+                            });
+                        });
+                    }
+                    
+                    processBatch();
+                });
             } else {
-                // Search with specific parameters
+                // Search with specific UI parameters
+                // console.log('Searching with specific UI parameters for pattern:', patternType);
+                
+                // Get parameters from UI
                 let patternParams = {};
                 
-                if (patternType === 'horizontal_zigzag' || patternType === 'vertical_zigzag') {
+                if (patternType === 'horizontal_zigzag') {
+                    const hzStartRow = document.getElementById('hzStartRow');
+                    const hzStartCol = document.getElementById('hzStartCol');
+                    const hzLength = document.getElementById('hzLength');
+                    
+                    if (!hzStartRow || !hzStartCol || !hzLength) {
+                        alert("Horizontal Zigzag parameters not available. Please select the pattern type first.");
+                        return;
+                    }
+                    
                     patternParams = {
-                        start_row: 13,
-                        start_col: 13,
-                        length: target.length
+                        start_row: parseInt(hzStartRow.value),
+                        start_col: parseInt(hzStartCol.value),
+                        length: parseInt(hzLength.value)
+                    };
+                } else if (patternType === 'vertical_zigzag') {
+                    const vzStartRow = document.getElementById('vzStartRow');
+                    const vzStartCol = document.getElementById('vzStartCol');
+                    const vzLength = document.getElementById('vzLength');
+                    
+                    if (!vzStartRow || !vzStartCol || !vzLength) {
+                        alert("Vertical Zigzag parameters not available. Please select the pattern type first.");
+                        return;
+                    }
+                    
+                    patternParams = {
+                        start_row: parseInt(vzStartRow.value),
+                        start_col: parseInt(vzStartCol.value),
+                        length: parseInt(vzLength.value)
                     };
                 } else if (patternType === 'chess_knight') {
+                    const knightStartRow = document.getElementById('knightStartRow');
+                    const knightStartCol = document.getElementById('knightStartCol');
+                    const knightJumps = document.getElementById('knightJumps');
+                    const knightAvoidEdges = document.getElementById('knightAvoidEdges');
+                    const knightSeed = document.getElementById('knightSeed');
+                    
+                    if (!knightStartRow || !knightStartCol || !knightJumps) {
+                        alert("Chess Knight parameters not available. Please select the pattern type first.");
+                        return;
+                    }
+                    
+                    const constraints = {};
+                    if (knightAvoidEdges.checked) {
+                        constraints.avoid_edges = true;
+                    }
+                    const seedValue = knightSeed.value;
+                    if (seedValue) {
+                        constraints.random_seed = parseInt(seedValue);
+                    }
+                    const preferredDirections = [];
+                    document.querySelectorAll('input[name="knightDir"]:checked').forEach(checkbox => {
+                        preferredDirections.push(checkbox.value);
+                    });
+                    if (preferredDirections.length > 0) {
+                        constraints.preferred_directions = preferredDirections;
+                    }
+                    
                     patternParams = {
-                        start_row: 13,
-                        start_col: 13,
-                        num_jumps: target.length - 1,
-                        constraints: { random_seed: 42 }
+                        start_row: parseInt(knightStartRow.value),
+                        start_col: parseInt(knightStartCol.value),
+                        num_jumps: parseInt(knightJumps.value),
+                        constraints
+                    };
+                } else if (patternType === 'shreni_bandha') {
+                    const shreniStartRow = document.getElementById('shreniStartRow');
+                    const shreniStartCol = document.getElementById('shreniStartCol');
+                    const shreniSteps = document.getElementById('shreniSteps');
+                    const shreniDirection = document.querySelector('input[name="shreniDirection"]:checked');
+                    
+                    if (!shreniStartRow || !shreniStartCol || !shreniSteps || !shreniDirection) {
+                        alert("Shreni Bandha parameters not available. Please select the pattern type first.");
+                        return;
+                    }
+                    
+                    patternParams = {
+                        start_row: parseInt(shreniStartRow.value),
+                        start_col: parseInt(shreniStartCol.value),
+                        num_steps: parseInt(shreniSteps.value),
+                        direction: shreniDirection.value
                     };
                 }
 
+                // console.log('Pattern params:', patternParams);
                 fetch('/api/search/bandha_pattern', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -931,6 +1392,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
                     .then(res => res.json())
                     .then(data => {
+                        // console.log('Response from bandha_pattern:', data);
                         handlePatternSearchResults(data, target);
                     })
                     .catch(err => {

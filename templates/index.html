@@ -101,96 +101,54 @@
 
                     <div class="control-group">
                         <label>Bandha Patterns:</label>
-                        <div class="pattern-controls">
-                            <!-- Horizontal Zig-Zag -->
-                            <div class="pattern-subgroup">
-                                <h4>Horizontal Zig-Zag</h4>
-                                <div class="input-row">
-                                    <label>Start Row:</label>
-                                    <input type="number" id="hzStartRow" value="13" min="0" max="26" style="width: 60px;">
-                                    <label>Start Col:</label>
-                                    <input type="number" id="hzStartCol" value="10" min="0" max="26" style="width: 60px;">
-                                    <label>Length:</label>
-                                    <input type="number" id="hzLength" value="12" min="1" max="50" style="width: 60px;">
-                                    <button id="hzBtn">Generate</button>
-                                </div>
+                        <div class="pattern-selector">
+                            <div class="input-row">
+                                <label>Select Pattern:</label>
+                                <select id="patternType" style="width: 180px; font-size: 14px;">
+                                    <option value="" selected>-- Choose Pattern --</option>
+                                    <option value="horizontal_zigzag">Horizontal Zig-Zag</option>
+                                    <option value="vertical_zigzag">Vertical Zig-Zag</option>
+                                    <option value="chess_knight">Chess Knight Moves</option>
+                                    <option value="shreni_bandha">Shreni Bandha (Diagonal)</option>
+                                </select>
                             </div>
-
-                            <!-- Vertical Zig-Zag -->
-                            <div class="pattern-subgroup">
-                                <h4>Vertical Zig-Zag</h4>
-                                <div class="input-row">
-                                    <label>Start Row:</label>
-                                    <input type="number" id="vzStartRow" value="10" min="0" max="26" style="width: 60px;">
-                                    <label>Start Col:</label>
-                                    <input type="number" id="vzStartCol" value="13" min="0" max="26" style="width: 60px;">
-                                    <label>Length:</label>
-                                    <input type="number" id="vzLength" value="12" min="1" max="50" style="width: 60px;">
-                                    <button id="vzBtn">Generate</button>
-                                </div>
-                            </div>
-
-                            <!-- Chess Knight Moves -->
-                            <div class="pattern-subgroup">
-                                <h4>Chess Knight Moves</h4>
-                                <div class="input-row">
-                                    <label>Start Row:</label>
-                                    <input type="number" id="knightStartRow" value="13" min="0" max="26" style="width: 60px;">
-                                    <label>Start Col:</label>
-                                    <input type="number" id="knightStartCol" value="13" min="0" max="26" style="width: 60px;">
-                                    <label>Jumps:</label>
-                                    <input type="number" id="knightJumps" value="6" min="1" max="20" style="width: 60px;">
-                                    <button id="knightBtn">Generate</button>
-                                </div>
-                                <div class="input-row" style="margin-top: 5px;">
-                                    <label style="display:inline;font-size:12px;">
-                                        <input type="checkbox" id="knightAvoidEdges"> Avoid Edges
-                                    </label>
-                                    <label style="display:inline;font-size:12px;margin-left:10px;">
-                                        Random Seed:
-                                        <input type="number" id="knightSeed" value="42" min="0" max="9999" style="width: 60px;">
-                                    </label>
-                                </div>
-                                <div class="input-row" style="margin-top: 5px;">
-                                    <label style="display:inline;font-size:12px;">Preferred Directions:</label>
-                                    <label style="display:inline;font-size:12px;">
-                                        <input type="checkbox" name="knightDir" value="up"> Up
-                                    </label>
-                                    <label style="display:inline;font-size:12px;">
-                                        <input type="checkbox" name="knightDir" value="down"> Down
-                                    </label>
-                                    <label style="display:inline;font-size:12px;">
-                                        <input type="checkbox" name="knightDir" value="left"> Left
-                                    </label>
-                                    <label style="display:inline;font-size:12px;">
-                                        <input type="checkbox" name="knightDir" value="right"> Right
-                                    </label>
-                                </div>
+                            
+                            <!-- Pattern-specific parameters will be shown here -->
+                            <div id="patternParams" class="pattern-params">
+                                <!-- Parameters will be dynamically inserted here -->
                             </div>
                         </div>
                     </div>
 
                     <div class="control-group search-section">
-                        <label>Search Text:</label>
+                        <label>Target Strings:</label>
                         <div class="input-group">
-                            <input type="text" id="searchInput" placeholder="Target text">
-                            <button id="searchBtn">Search</button>
+                            <select id="targetStringsDropdown" style="width: 200px; font-size: 14px;">
+                                <option value="">-- Select Target String --</option>
+                            </select>
+                            <button id="refreshStringsBtn" style="margin-left: 5px;">↻</button>
+                        </div>
+                        
+                        <label style="margin-top: 10px;">Search Text:</label>
+                        <div class="input-group">
+                            <textarea id="searchInput" placeholder="Target text" rows="2" style="width: 200px; resize: vertical; white-space: pre-wrap; word-wrap: break-word;"></textarea>
+                            <button id="searchBtn" disabled>Search</button>
                         </div>
                         <div style="margin-top: 5px;">
                             <label style="display:inline;font-size:12px;">Measure: 
                                 <select id="searchMeasure">
                                     <option value="exact">Exact Search</option>
-                                    <option value="hamming">Hamming Distance</option>
+                                    <option value="hamming" selected>Hamming Distance</option>
                                     <option value="levenshtein">Levenshtein Distance</option>
                                 </select>
                             </label>
                             <label style="display:inline;font-size:12px;margin-left:5px;">Max Dist:
-                                <input type="number" id="searchMaxDist" value="0" min="0" style="width: 40px;">
+                                <input type="number" id="searchMaxDist" value="3" min="0" style="width: 40px;">
                             </label>
                         </div>
                         <div style="margin-top: 5px;">
                             <label style="display:inline;font-size:12px;">
-                                <input type="checkbox" id="useSandhi"> Enable Sandhi Conversion (match path text with normal words)
+                                <input type="checkbox" id="useSandhi" checked> Enable Sandhi Conversion (match path text with normal words)
                             </label>
                         </div>
                         <div style="margin-top: 10px;">
@@ -201,8 +159,14 @@
                                     <option value="horizontal_zigzag">Horizontal Zig-Zag</option>
                                     <option value="vertical_zigzag">Vertical Zig-Zag</option>
                                     <option value="chess_knight">Chess Knight</option>
+                                    <option value="shreni_bandha" selected>Shreni Bandha</option>
                                 </select>
                                 <button id="patternSearchBtn" style="margin-left: 5px; font-size: 12px;">Search Pattern</button>
+                            </div>
+                            <div style="margin-top: 5px;">
+                                <label style="display:inline;font-size:12px;">
+                                    <input type="checkbox" id="tryAllPatterns"> Try All Patterns
+                                </label>
                             </div>
                             <div style="margin-top: 5px;">
                                 <label style="display:inline;font-size:12px;">

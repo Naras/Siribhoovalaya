@@ -269,3 +269,84 @@ class Bandha:
         
         self.path_points = points
         return points
+    
+    def shreni_bandha(self, start_row, start_col, num_steps, direction='up'):
+        """
+        Creates a Shreni Bandha pattern - diagonal movement with boundary folding.
+        
+        Pattern: Moves diagonally, folding over at boundaries:
+        - Up/Right: (0,13) -> (26,14) and (14,26) -> (13,0) and so on
+        - Down/Left: Similar folding behavior
+        
+        Args:
+            start_row (int): Starting row coordinate (0-26)
+            start_col (int): Starting column coordinate (0-26)
+            num_steps (int): Number of steps/length of path
+            direction (str): 'up' for diagonal up-right, 'down' for diagonal down-left
+        
+        Returns:
+            List[Tuple[int, int]]: List of (row, col) coordinates
+        """
+        points = []
+        current_row, current_col = start_row, start_col
+        visited = set()
+        
+        # Determine direction vectors
+        if direction == 'up':
+            dr, dc = -1, 1  # Up-right diagonal
+        else:
+            dr, dc = 1, -1  # Down-left diagonal
+        
+        for step in range(num_steps):
+            # Calculate next diagonal position
+            next_row = current_row + dr
+            next_col = current_col + dc
+            
+            # Check boundaries and apply folding to next position
+            if next_row < 0 or next_row > 26:
+                # Fold vertically
+                if direction == 'up':
+                    next_row = 26
+                else:
+                    next_row = 0
+            
+            if next_col < 0 or next_col > 26:
+                # Fold horizontally  
+                if direction == 'up':
+                    next_col = 0
+                else:
+                    next_col = 26
+            
+            # Check if next cell is already visited
+            if (next_row, next_col) in visited:
+                # Avoid visited cell by moving vertically from current position (same column)
+                if direction == 'up':
+                    # Move down 1 cell vertically (same column)
+                    next_row = min(current_row + 1, 26)
+                    # Keep column the same
+                    next_col = current_col
+                else:
+                    # Move up 1 cell vertically (same column)
+                    next_row = max(current_row - 1, 0)
+                    # Keep column the same
+                    next_col = current_col
+                
+                # Ensure we're still in bounds after adjustment
+                next_row = max(0, min(26, next_row))
+                next_col = max(0, min(26, next_col))
+            
+            # Add position if valid and not already visited
+            if 0 <= next_row <= 26 and 0 <= next_col <= 26:
+                if (next_row, next_col) not in visited:
+                    points.append((next_row, next_col))
+                    visited.add((next_row, next_col))
+                else:
+                    # If still visited after adjustment, skip this step
+                    continue
+            
+            # Update current position for next iteration
+            current_row = next_row
+            current_col = next_col
+        
+        self.path_points = points
+        return points

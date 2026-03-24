@@ -422,7 +422,7 @@ def search_grid_endpoint():
         max_distance = 0
     script = data.get('script', 'kannada')
     use_sandhi = data.get('use_sandhi', False)
-    
+    # print(f'Standard Search: target {target} measure {measure} distance {max_distance}')
     from src.search import search_grid
     results = search_grid(chakra, target, measure, max_distance, script, use_sandhi)
     
@@ -500,6 +500,30 @@ def chess_knight_endpoint():
         'text_with_sandhi': text_with_sandhi
     })
 
+@app.route('/api/bandha/shreni_bandha', methods=['POST'])
+def shreni_bandha_endpoint():
+    """
+    Accepts JSON with 'start_row', 'start_col', 'num_steps', 'direction', 'script', 'use_sandhi'.
+    Returns the path and extracted text.
+    """
+    data = request.json
+    start_row = int(data.get('start_row', 0))
+    start_col = int(data.get('start_col', 0))
+    num_steps = int(data.get('num_steps', 10))
+    direction = data.get('direction', 'up')
+    script = data.get('script', 'kannada')
+    use_sandhi = data.get('use_sandhi', False)
+    
+    bandha = Bandha()
+    points = bandha.shreni_bandha(start_row, start_col, num_steps, direction)
+    text_without_sandhi, text_with_sandhi = bandha.traverse(chakra, script=script)
+    
+    return jsonify({
+        'points': points,
+        'text_without_sandhi': text_without_sandhi,
+        'text_with_sandhi': text_with_sandhi
+    })
+
 @app.route('/api/search/bandha_pattern', methods=['POST'])
 def search_bandha_pattern_endpoint():
     """
@@ -517,12 +541,11 @@ def search_bandha_pattern_endpoint():
         max_distance = 0
     script = data.get('script', 'kannada')
     use_sandhi = data.get('use_sandhi', False)
-    
     results = search_with_bandha_patterns(
         chakra, target, pattern_type, pattern_params,
         measure, max_distance, script, use_sandhi
     )
-    
+    # print(f'Bandha pattern search: target {target} type {pattern_type} params {pattern_params} measure {measure} script {script} use_sandhi {use_sandhi} distance {max_distance} results:{results}')
     return jsonify({
         'matches': results
     })
@@ -543,7 +566,8 @@ def search_all_pattern_variants_endpoint():
         max_distance = 0
     script = data.get('script', 'kannada')
     use_sandhi = data.get('use_sandhi', False)
-    
+
+    print(f'All patterns search: target {target} type {pattern_type} measure {measure} script {script} use_sandhi {use_sandhi}')
     results = search_all_pattern_variants(
         chakra, target, pattern_type,
         measure, max_distance, script, use_sandhi
@@ -643,5 +667,18 @@ def load_path(name):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/target_strings', methods=['GET'])
+def get_target_strings():
+    """Return list of target strings from TargetStrings.txt file."""
+    target_file_path = os.path.join(BASE_DIR, 'TargetStrings.txt')
+    try:
+        with open(target_file_path, 'r', encoding='utf-8') as f:
+            strings = [line.strip() for line in f.readlines() if line.strip()]
+        return jsonify({'strings': strings})
+    except FileNotFoundError:
+        return jsonify({'error': 'TargetStrings.txt file not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5009)

@@ -194,7 +194,7 @@ def search_with_bandha_patterns(chakra, target, pattern_type, pattern_params, me
     
     if not target:
         return results
-    
+
     # Create Bandha instance and generate path
     bandha = Bandha()
     
@@ -218,6 +218,14 @@ def search_with_bandha_patterns(chakra, target, pattern_type, pattern_params, me
                 pattern_params['num_jumps'],
                 pattern_params.get('constraints')
             )
+        elif pattern_type == 'shreni_bandha':
+            path = bandha.shreni_bandha(
+                pattern_params['start_row'],
+                pattern_params['start_col'],
+                pattern_params['num_steps'],
+                pattern_params.get('direction', 'up')
+            )
+            # print(f'params {pattern_params} path {path}')
         else:
             return results
         
@@ -236,8 +244,9 @@ def search_with_bandha_patterns(chakra, target, pattern_type, pattern_params, me
             extracted_text_dev += akshara_res[1]
             # Keep original script for display
             extracted_text_display += akshara_res[0] if script == 'kannada' else akshara_res[1]
-        
+        # print(f'res 1 {results}')
         if not valid_path or not extracted_text_dev:
+            # print(f'res not valid path {results}')
             return results
         
         # Process target text
@@ -247,45 +256,69 @@ def search_with_bandha_patterns(chakra, target, pattern_type, pattern_params, me
             target_devanagari = target
         
         target_processed = Sandhi(target_devanagari) if use_sandhi else target_devanagari
+        target_len = len(target_processed)
         
-        # Apply Sandhi to extracted text if enabled
-        extracted_processed = Sandhi(extracted_text_dev) if use_sandhi else extracted_text_dev
-        
-        # Calculate distance based on measure
-        if measure == 'exact':
-            if extracted_processed == target_processed:
-                distance = 0
+        # Try different path lengths for fuzzy matching (like standard search)
+        min_len = target_len if measure == 'exact' else max(1, target_len - max_distance)
+        max_len = target_len if measure == 'exact' else max(len(path), target_len + max_distance)
+        # print(f'path len {len(path)} other {target_len + max_distance} max {max_len} min {min_len}')
+        # print(f'res 3 {results}')
+        for path_len in range(min_len, max_len + 1):
+            # Take only the first path_len characters
+            test_text_dev = extracted_text_dev[:path_len]
+            test_text_display = extracted_text_display[:path_len]
+
+            # Apply Sandhi to extracted text if enabled
+            test_processed = Sandhi(test_text_dev) if use_sandhi else test_text_dev
+            # print(f'target_processed {target_processed} {target_len} test_processed {test_processed} {len(test_processed)} test_text dev {test_text_dev} {len(test_text_dev)} display {test_text_display} {len(test_text_display)}')
+
+            # Calculate distance based on measure
+            if measure == 'exact':
+                if test_processed == target_processed:
+                    distance = 0
+                else:
+                    continue
+            elif measure == 'hamming':
+                # For hamming distance, allow different lengths by comparing substrings
+                if len(test_processed) >= len(target_processed):
+                    # Compare first target_len characters
+                    test_substring = test_processed[:len(target_processed)]
+                    distance = hamming(test_substring, target_processed)
+                elif len(test_processed) <= len(target_processed):
+                    # Compare entire test_processed with first test_len characters of target
+                    target_substring = target_processed[:len(test_processed)]
+                    distance = hamming(test_processed, target_substring)
+                else:
+                    continue
+            elif measure == 'levenshtein':
+                distance = levenshtein(test_processed, target_processed)
             else:
-                return results
-        elif measure == 'hamming':
-            if len(extracted_processed) == len(target_processed):
-                distance = hamming(extracted_processed, target_processed)
-            else:
-                return results
-        elif measure == 'levenshtein':
-            distance = levenshtein(extracted_processed, target_processed)
-        else:
-            return results
-        
-        if distance <= max_distance:
-            # Transliterate processed Devanagari back to target script for display
-            if script == 'kannada':
-                processed_display = transliterate_text(extracted_processed, 'kannada')
-            else:
-                processed_display = extracted_processed
-            
-            # Only add Sandhi converted text if it's different from extracted
-            sandhi_converted = processed_display if use_sandhi and processed_display != extracted_text_display else None
-            
-            results.append({
-                'path': path,
-                'extracted_text': extracted_text_display,
-                'sandhi_converted_text': sandhi_converted,
-                'distance': distance,
-                'measure': measure,
-                'pattern_type': pattern_type,
-                'pattern_params': pattern_params
-            })
+                continue
+            # print(f'res 4 {results}')
+            if distance <= max_distance:
+                # Transliterate processed Devanagari back to target script for display
+                if script == 'kannada':
+                    processed_display = transliterate_text(test_processed, 'kannada')
+                else:
+                    processed_display = test_processed
+                # print(f'processed_display 5 {processed_display}')
+                # Only add Sandhi converted text if it's different from extracted
+                sandhi_converted = processed_display if use_sandhi and processed_display != test_text_display else None
+                # print(f'sandhi_converted 5 {sandhi_converted}')
+                results = []
+                results.append({
+                    'path': path[:path_len],  # Use the truncated path
+                    'extracted_text': test_text_display,
+                    'sandhi_converted_text': sandhi_converted,
+                    'distance': distance,
+                    'measure': measure,
+                    'pattern_type': pattern_type,
+                    'pattern_params': pattern_params
+                })
+                
+                # For exact matches, we can break early
+                if measure == 'exact' and distance == 0:
+                    break
     
     except Exception as e:
         print(f"Error in pattern search: {e}")
@@ -346,7 +379,30 @@ def search_all_pattern_variants(chakra, target, pattern_type, measure='exact', m
                     )
                     all_results.extend(results)
     
-    # Sort results by distance and path length
-    all_results.sort(key=lambda x: (x['distance'], len(x['path'])))
+    elif pattern_type == 'shreni_bandha':
+        # For Shreni Bandha, try both directions and all starting positions
+        # Generate longer paths to allow different length matching
+        for direction in ['up', 'down']:
+            for start_row in range(27):
+                for start_col in range(27):
+                    # Generate a longer path to allow different length matching
+                    max_path_length = min(len(target) + max_distance + 3, 27)  # Add some extra length
+                    pattern_params = {
+                        'start_row': start_row,
+                        'start_col': start_col,
+                        'num_steps': max_path_length,
+                        'direction': direction
+                    }
+                    
+                    results = search_with_bandha_patterns(
+                        chakra, target, pattern_type, pattern_params,
+                        measure, max_distance, script, use_sandhi
+                    )
+                    all_results.extend(results)
+    
+    # Sort results by distance, path length, and then by position (top-left preference)
+    all_results.sort(key=lambda x: (x['distance'], len(x['path']),
+                                      x['pattern_params']['start_row'],
+                                      x['pattern_params']['start_col']))
     
     return all_results

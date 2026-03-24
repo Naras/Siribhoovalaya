@@ -38,3 +38,5 @@ session_summary.md
 
 *.db
 saved_paths/
+tests/
+test*py

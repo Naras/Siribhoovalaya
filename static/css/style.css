@@ -44,27 +44,77 @@ header {
     border-radius: 4px;
 }
 
-.pattern-controls {
+.pattern-selector {
     border: 1px solid #ddd;
     border-radius: 4px;
     padding: 10px;
     background-color: #f9f9f9;
 }
 
-.pattern-subgroup {
-    margin-bottom: 15px;
+.pattern-params {
+    margin-top: 10px;
     padding: 10px;
     border: 1px solid #e0e0e0;
     border-radius: 4px;
     background-color: white;
+    min-height: 60px;
 }
 
-.pattern-subgroup h4 {
+.pattern-params h4 {
     margin: 0 0 8px 0;
     font-size: 14px;
     color: #333;
     border-bottom: 1px solid #eee;
     padding-bottom: 4px;
+}
+
+.pattern-params .param-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.pattern-params .param-row label {
+    font-size: 12px;
+    margin: 0;
+    white-space: nowrap;
+}
+
+.pattern-params .param-row input[type="number"] {
+    padding: 4px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-size: 12px;
+    width: 60px;
+}
+
+.pattern-params .param-row button {
+    padding: 6px 12px;
+    font-size: 12px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.pattern-params .param-row button:hover {
+    background-color: #357abd;
+}
+
+.pattern-params .param-options {
+    margin-top: 8px;
+    padding: 8px;
+    background-color: #f8f9fa;
+    border-radius: 3px;
+    border: 1px solid #e9ecef;
+}
+
+.pattern-params .param-options label {
+    font-size: 12px;
+    margin-right: 10px;
 }
 
 .input-row {
