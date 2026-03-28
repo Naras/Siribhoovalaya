@@ -5,6 +5,10 @@ import sqlite3
 import re
 from functools import wraps
 from datetime import datetime, timedelta
+import redis
+import hashlib
+import json
+from dotenv import load_dotenv
 
 import jwt
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -13,6 +17,9 @@ from src.chakra import Chakra
 from src.bandha import Bandha
 from src.search import search_with_bandha_patterns, search_all_pattern_variants
 
+# Load environment variables
+load_dotenv()
+
 app = Flask(__name__)
 
 # Initialize Chakra
@@ -20,6 +27,103 @@ app = Flask(__name__)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 EXCEL_PATH = os.path.join(BASE_DIR, 'Adhyaya_One_Chakras.xlsx')
 chakra = Chakra(EXCEL_PATH, sheet_name='Chakra1-1-1')
+
+# Initialize Redis connection for caching
+try:
+    redis_client = redis.Redis(
+        host=os.environ.get('REDIS_HOST', 'localhost'),
+        port=int(os.environ.get('REDIS_PORT', 6379)),
+        db=int(os.environ.get('REDIS_DB', 0)),
+        decode_responses=True,
+        socket_connect_timeout=5,
+        socket_timeout=5,
+        retry_on_timeout=True
+    )
+    # Test connection
+    redis_client.ping()
+    REDIS_AVAILABLE = True
+    print("✅ Redis connected successfully")
+except Exception as e:
+    print(f"⚠️  Redis connection failed: {e}")
+    print("⚠️  Application will run without caching")
+    redis_client = None
+    REDIS_AVAILABLE = False
+
+# Caching decorator for pattern generation
+def cache_pattern(ttl: int = 3600):
+    """Decorator to cache pattern generation results."""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # Skip caching if Redis is not available
+            if not REDIS_AVAILABLE or redis_client is None:
+                return func(*args, **kwargs)
+            
+            # Generate cache key from function arguments
+            if func.__name__ == 'shreni_bandha':
+                key_data = f"shreni_bandha:{args[0]}:{args[1]}:{args[2]}:{args[3]}"
+            elif func.__name__ == 'horizontal_zigzag':
+                key_data = f"horizontal_zigzag:{args[0]}:{args[1]}:{args[2]}"
+            elif func.__name__ == 'vertical_zigzag':
+                key_data = f"vertical_zigzag:{args[0]}:{args[1]}:{args[2]}"
+            elif func.__name__ == 'chess_knight_moves':
+                key_data = f"chess_knight:{args[0]}:{args[1]}:{args[2]}:{hash(str(args[3]))}"
+            else:
+                return func(*args, **kwargs)
+            
+            # Create consistent cache key
+            cache_key = f"bandha:{hashlib.md5(key_data.encode()).hexdigest()}"
+            
+            # Try to get from cache
+            try:
+                cached = redis_client.get(cache_key)
+                if cached is not None:
+                    return json.loads(cached)
+            except Exception as e:
+                print(f"Redis error, falling back to direct generation: {e}")
+            
+            # Generate and cache result
+            result = func(*args, **kwargs)
+            try:
+                redis_client.setex(cache_key, ttl, json.dumps(result))
+            except Exception as e:
+                print(f"Redis cache error, continuing without cache: {e}")
+            
+            return result
+        
+        return wrapper
+    return decorator
+
+# Cached Bandha class
+class CachedBandha:
+    """Wrapper around original Bandha class with caching."""
+    
+    def __init__(self):
+        self.original = Bandha()
+    
+    @cache_pattern(ttl=3600)
+    def horizontal_zigzag(self, start_row: int, start_col: int, length: int):
+        """Cached horizontal zigzag pattern generation."""
+        return self.original.horizontal_zigzag(start_row, start_col, length)
+    
+    @cache_pattern(ttl=3600)
+    def vertical_zigzag(self, start_row: int, start_col: int, length: int):
+        """Cached vertical zigzag pattern generation."""
+        return self.original.vertical_zigzag(start_row, start_col, length)
+    
+    @cache_pattern(ttl=3600)
+    def chess_knight_moves(self, start_row: int, start_col: int, num_jumps: int, constraints=None):
+        """Cached chess knight pattern generation."""
+        return self.original.chess_knight_moves(start_row, start_col, num_jumps, constraints)
+    
+    @cache_pattern(ttl=3600)
+    def shreni_bandha(self, start_row: int, start_col: int, num_steps: int, direction: str = 'up'):
+        """Cached Shreni Bandha pattern generation."""
+        return self.original.shreni_bandha(start_row, start_col, num_steps, direction)
+    
+    def traverse(self, chakra, script='kannada'):
+        """Pass-through for traverse method (no caching needed)."""
+        return self.original.traverse(chakra, script)
 
 # --- Simple OAuth2-style auth setup (JWT bearer tokens) ---
 AUTH_DB_PATH = os.path.join(BASE_DIR, "auth_users.db")
@@ -97,7 +201,7 @@ def _get_bearer_token_from_request():
         return None
     if not auth.startswith("Bearer "):
         return None
-    token = auth[len("Bearer ") :].strip()
+    token = auth[len("Bearer "):].strip()
     return token or None
 
 
@@ -389,7 +493,7 @@ def traverse_path():
     formula = data.get('formula')
     script = data.get('script')
     # print(f"Request data: {data}")
-    bandha = Bandha()
+    bandha = CachedBandha()
     
     generated_points = []
     
@@ -423,7 +527,7 @@ def search_grid_endpoint():
         max_distance = 0
     script = data.get('script', 'kannada')
     use_sandhi = data.get('use_sandhi', False)
-    # print(f'Standard Search: target {target} measure {measure} distance {max_distance}')
+    
     from src.search import search_grid
     results = search_grid(chakra, target, measure, max_distance, script, use_sandhi)
     
@@ -444,7 +548,7 @@ def horizontal_zigzag_endpoint():
     script = data.get('script', 'kannada')
     use_sandhi = data.get('use_sandhi', False)
     
-    bandha = Bandha()
+    bandha = CachedBandha()
     points = bandha.horizontal_zigzag(start_row, start_col, length)
     text_without_sandhi, text_with_sandhi = bandha.traverse(chakra, script=script)
     
@@ -467,7 +571,7 @@ def vertical_zigzag_endpoint():
     script = data.get('script', 'kannada')
     use_sandhi = data.get('use_sandhi', False)
     
-    bandha = Bandha()
+    bandha = CachedBandha()
     points = bandha.vertical_zigzag(start_row, start_col, length)
     text_without_sandhi, text_with_sandhi = bandha.traverse(chakra, script=script)
     
@@ -491,7 +595,7 @@ def chess_knight_endpoint():
     script = data.get('script', 'kannada')
     use_sandhi = data.get('use_sandhi', False)
     
-    bandha = Bandha()
+    bandha = CachedBandha()
     points = bandha.chess_knight_moves(start_row, start_col, num_jumps, constraints)
     text_without_sandhi, text_with_sandhi = bandha.traverse(chakra, script=script)
     
@@ -515,7 +619,7 @@ def shreni_bandha_endpoint():
     script = data.get('script', 'kannada')
     use_sandhi = data.get('use_sandhi', False)
     
-    bandha = Bandha()
+    bandha = CachedBandha()
     points = bandha.shreni_bandha(start_row, start_col, num_steps, direction)
     text_without_sandhi, text_with_sandhi = bandha.traverse(chakra, script=script)
     
@@ -543,11 +647,12 @@ def search_bandha_pattern_endpoint():
         max_distance = 0
     script = data.get('script', 'kannada')
     use_sandhi = data.get('use_sandhi', False)
+    
     results = search_with_bandha_patterns(
         chakra, target, pattern_type, pattern_params,
         measure, max_distance, script, use_sandhi
     )
-    # print(f'Bandha pattern search: target {target} type {pattern_type} params {pattern_params} measure {measure} script {script} use_sandhi {use_sandhi} distance {max_distance} results:{results}')
+    
     return jsonify({
         'matches': results
     })
@@ -569,8 +674,7 @@ def search_all_pattern_variants_endpoint():
         max_distance = 0
     script = data.get('script', 'kannada')
     use_sandhi = data.get('use_sandhi', False)
-
-    print(f'All patterns search: target {target} type {pattern_type} measure {measure} script {script} use_sandhi {use_sandhi}')
+    
     results = search_all_pattern_variants(
         chakra, target, pattern_type,
         measure, max_distance, script, use_sandhi
@@ -683,5 +787,105 @@ def get_target_strings():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Caching endpoints for monitoring and management
+@app.route('/health')
+def health_check():
+    """Health check endpoint for monitoring."""
+    if REDIS_AVAILABLE and redis_client:
+        try:
+            redis_status = "connected" if redis_client.ping() else "disconnected"
+        except:
+            redis_status = "error"
+    else:
+        redis_status = "disabled"
+    
+    return jsonify({
+        'status': 'healthy',
+        'redis': redis_status,
+        'cache_enabled': REDIS_AVAILABLE,
+        'timestamp': str(datetime.utcnow())
+    })
+
+@app.route('/cache/stats')
+def cache_stats():
+    """Redis cache statistics."""
+    if not REDIS_AVAILABLE or redis_client is None:
+        return jsonify({
+            'error': 'Redis not available',
+            'cache_enabled': False,
+            'message': 'Caching is disabled'
+        }), 504
+    
+    try:
+        info = redis_client.info()
+        return jsonify({
+            'redis_memory': info.get('used_memory_human', 'N/A'),
+            'keyspace_hits': info.get('keyspace_hits', 0),
+            'keyspace_misses': info.get('keyspace_misses', 0),
+            'connected_clients': info.get('connected_clients', 0),
+            'uptime': info.get('uptime_in_seconds', 0),
+            'cache_enabled': True
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/cache/warm', methods=['POST'])
+@auth_required
+def warm_cache():
+    """Warm up cache with common patterns."""
+    try:
+        cached_bandha = CachedBandha()
+        warmed_patterns = 0
+        
+        # Common patterns to pre-cache
+        common_patterns = [
+            ('shreni_bandha', 13, 13, 10, 'up'),
+            ('shreni_bandha', 13, 13, 10, 'down'),
+            ('horizontal_zigzag', 13, 13, 12),
+            ('vertical_zigzag', 13, 13, 12),
+            ('chess_knight', 13, 13, 6),
+        ]
+        
+        for pattern_args in common_patterns:
+            try:
+                if pattern_args[0] == 'shreni_bandha':
+                    cached_bandha.shreni_bandha(*pattern_args[1:])
+                elif pattern_args[0] == 'horizontal_zigzag':
+                    cached_bandha.horizontal_zigzag(*pattern_args[1:])
+                elif pattern_args[0] == 'vertical_zigzag':
+                    cached_bandha.vertical_zigzag(*pattern_args[1:])
+                elif pattern_args[0] == 'chess_knight':
+                    cached_bandha.chess_knight_moves(*pattern_args[1:])
+                
+                warmed_patterns += 1
+            except Exception as e:
+                print(f"Error warming pattern {pattern_args}: {e}")
+        
+        return jsonify({
+            'warmed_patterns': warmed_patterns,
+            'status': 'cache_warmed'
+        })
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/cache/clear', methods=['POST'])
+@auth_required
+def clear_cache():
+    """Clear all Bandha pattern caches."""
+    try:
+        # Delete all keys with 'bandha:' prefix
+        keys = redis_client.keys('bandha:*')
+        if keys:
+            redis_client.delete(*keys)
+        
+        return jsonify({
+            'cleared_keys': len(keys),
+            'status': 'cache_cleared'
+        })
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5007)  # Changed to port 5007 as requested
