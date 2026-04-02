@@ -57,15 +57,14 @@ else\n\
 fi\n\
 \n\
 # Start Flask application\n\
-exec gunicorn --bind 0.0.0.0:5007 --workers 2 --timeout 60 app:app\n\
+exec gunicorn --bind 0.0.0.0:5000 --workers 2 --timeout 60 app:app\n\
 ' > /app/start.sh && chmod +x /app/start.sh
 
 # Expose ports
-EXPOSE 5007 6379
+EXPOSE 5000 6379
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:5007/health && redis-cli ping || exit 1
-
+    CMD curl -f http://localhost:5000/health && redis-cli ping || exit 1
 # Start both Redis and Flask
 CMD ["/app/start.sh"]

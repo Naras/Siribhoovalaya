@@ -125,6 +125,21 @@ class CachedBandha:
         """Pass-through for traverse method (no caching needed)."""
         return self.original.traverse(chakra, script)
 
+    def set_path(self, points):
+        """Pass-through for set_path method (no caching needed)."""
+        return self.original.set_path(points)
+
+    def generate_from_function(self, formula):
+        """Pass-through for generate_from_function method (no caching needed)."""
+        return self.original.generate_from_function(formula)
+
+    def add_point(self, row, col):
+        """Pass-through for add_point method (no caching needed)."""
+        return self.original.add_point(row, col)
+
+    def get_coordinates(self):
+        """Pass-through for get_coordinates method (no caching needed)."""
+        return self.original.get_coordinates()
 # --- Simple OAuth2-style auth setup (JWT bearer tokens) ---
 AUTH_DB_PATH = os.path.join(BASE_DIR, "auth_users.db")
 JWT_SECRET_KEY = os.environ.get("SIRIBHOOVALAYA_JWT_SECRET", "change-this-secret-in-production")
@@ -888,4 +903,4 @@ def clear_cache():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5007)  # Changed to port 5007 as requested
+    app.run(debug=True, host='0.0.0.0', port=5000)

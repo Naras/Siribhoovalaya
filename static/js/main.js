@@ -518,6 +518,7 @@ document.addEventListener('DOMContentLoaded', () => {
         })
             .then(res => res.json())
             .then(data => {
+                // console.log("Extracted data:", data);
                 outputDiv.textContent = data.text_without_sandhi || '...';
                 outputDivSandhi.textContent = data.text_with_sandhi || '...';
             })
@@ -862,7 +863,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (generateBtn) {
         generateBtn.addEventListener('click', () => {
-            console.log("Go button clicked");
+            // console.log("Go button clicked");
             const formula = formulaInput.value.trim();
             // console.log("Formula:", formula);
 
@@ -872,7 +873,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (displayMode === 'ಅಕ್ಷರಗಳು') script = 'kannada';
-            else script = 'devanagari'; // console.log("Default script for generation:", script);
+            else script = 'devanagari'; 
+            // console.log("Default script for generation:", script);
             // console.log("Sending request to /api/traverse");
             fetch('/api/traverse', {
                 method: 'POST',
@@ -880,7 +882,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ formula, script })
             })
                 .then(res => {
-                    console.log("Response status:", res.status);
+                    // console.log("Response status:", res.status);
                     return res.json();
                 })
                 .then(data => {
@@ -915,12 +917,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const refreshStringsBtn = document.getElementById('refreshStringsBtn');
 
     // Debug: Check if elements are found
-    console.log('Target strings dropdown element:', targetStringsDropdown);
-    console.log('Refresh button element:', refreshStringsBtn);
+    // console.log('Target strings dropdown element:', targetStringsDropdown);
+    // console.log('Refresh button element:', refreshStringsBtn);
 
     // Load target strings from server
     async function loadTargetStrings() {
-        console.log('Loading target strings...');
+        // console.log('Loading target strings...');
         
         if (!targetStringsDropdown) {
             console.error('Target strings dropdown not found!');
@@ -929,17 +931,17 @@ document.addEventListener('DOMContentLoaded', () => {
         
         try {
             const response = await fetch('/api/target_strings');
-            console.log('Response status:', response.status);
+            // console.log('Response status:', response.status);
             
             if (!response.ok) {
                 console.warn('Failed to load target strings:', response.statusText);
                 return;
             }
             const data = await response.json();
-            console.log('Received data:', data);
+            // console.log('Received data:', data);
             
             const strings = data.strings || [];
-            console.log('Strings count:', strings.length);
+            // console.log('Strings count:', strings.length);
             
             // Clear existing options except the first one
             targetStringsDropdown.innerHTML = '<option value="">-- Select Target String --</option>';
@@ -952,10 +954,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 option.textContent = `${str} [${language}]`;
                 option.setAttribute('data-language', language);
                 targetStringsDropdown.appendChild(option);
-                console.log(`Added option: ${str} [${language}]`);
+                // console.log(`Added option: ${str} [${language}]`);
             });
             
-            console.log('Dropdown population complete');
+            // console.log('Dropdown population complete');
         } catch (error) {
             console.error('Error loading target strings:', error);
         }
@@ -1018,7 +1020,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Automatically set script mode based on detected language
                 if (detectedLanguage && detectedLanguage !== 'Mixed/Unknown') {
                     setScriptMode(detectedLanguage);
-                    console.log(`Language detected: ${detectedLanguage}, script mode set accordingly`);
+                    // console.log(`Language detected: ${detectedLanguage}, script mode set accordingly`);
                 }
             }
         });
@@ -1031,7 +1033,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Load target strings on page load with a small delay to ensure DOM is ready
     setTimeout(() => {
-        console.log('Attempting to load target strings after timeout...');
+        // console.log('Attempting to load target strings after timeout...');
         loadTargetStrings();
     }, 100);
 
@@ -1284,7 +1286,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             .then(data => {
                                 // console.log(`API response for position (${pos.pattern_params.start_row}, ${pos.pattern_params.start_col}):`, data);
                                 if (data.matches && data.matches.length > 0) {
-                                    console.log(`Found ${data.matches.length} matches!`);
+                                    // console.log(`Found ${data.matches.length} matches!`);
                                     allResults = allResults.concat(data.matches);
                                 }
                                 batchCompleted++;
